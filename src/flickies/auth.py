@@ -48,15 +48,23 @@ class BearerAuthMiddleware:
         token = _extract_bearer(scope)
         if token is None:
             _log.warning(
-                "auth: missing bearer header on %s %s",
-                scope.get("method", "?"), path,
+                "auth: missing bearer header",
+                extra={
+                    "method": scope.get("method", "?"),
+                    "path": path,
+                    "reason": "missing_bearer",
+                },
             )
             await _send_401(send, "missing Authorization: Bearer header")
             return
         if not hmac.compare_digest(token, self.token):
             _log.warning(
-                "auth: invalid bearer token on %s %s",
-                scope.get("method", "?"), path,
+                "auth: invalid bearer token",
+                extra={
+                    "method": scope.get("method", "?"),
+                    "path": path,
+                    "reason": "invalid_bearer",
+                },
             )
             await _send_401(send, "invalid bearer token")
             return

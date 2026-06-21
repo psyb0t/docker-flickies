@@ -75,15 +75,17 @@ class JobQueue:
                 job.error = {"code": "JOB_FAILED", "message": str(e)}
                 job.status = "failed"
                 job.finished_at = time.time()
-                _log.exception("job failed: id=%s", job.job_id)
+                _log.exception("job failed", extra={"job_id": job.job_id})
             else:
                 job.result = result
                 job.status = "complete"
                 job.finished_at = time.time()
                 _log.info(
-                    "job complete: id=%s wall_secs=%.2f",
-                    job.job_id,
-                    (job.finished_at - (job.started_at or job.finished_at)),
+                    "job complete",
+                    extra={
+                        "job_id": job.job_id,
+                        "wall_secs": (job.finished_at - (job.started_at or job.finished_at)),
+                    },
                 )
             if webhook_url:
                 # Lazy import to avoid pulling httpx into jobs.py at module load.

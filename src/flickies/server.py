@@ -76,7 +76,7 @@ def _build_registry(cfg: Config) -> Registry:
         executor = spec.get("executor")
         cls = _EXECUTOR_MAP.get(executor) if isinstance(executor, str) else None
         if cls is None:
-            _log.warning("engine skipped (unknown executor): slug=%s executor=%s", slug, executor)
+            _log.warning("engine skipped — unknown executor", extra={"engine_slug": slug, "executor": str(executor), "reason": "unknown_executor"})
             continue
         r.register(cls(slug=slug, **spec))
     return r
@@ -176,7 +176,7 @@ def build_app() -> FastAPI:
         from flickies.mcp_server import build_mcp_server
         mcp_server = build_mcp_server(cfg=cfg, registry=registry, ffmpeg=ffmpeg)
     except ImportError as e:
-        _log.warning("mcp server unavailable: %s", e)
+        _log.warning("mcp server unavailable", extra={"err": str(e), "reason": "import_failed"})
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:

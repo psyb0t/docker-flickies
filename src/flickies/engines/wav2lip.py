@@ -34,8 +34,14 @@ _log = logging.getLogger("flickies.engines.wav2lip")
 
 _IMG_SIZE = 96
 _MEL_STEP_SIZE = 16
-_S3FD_URL = "https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth"
-_S3FD_BASENAME = "s3fd-619a316812.pth"
+# HF mirror layouts:
+#   Wav2Lip weights → Nekochu/Wav2Lip {wav2lip.pth, wav2lip_gan.pth}
+#   S3FD detector  → ByteDance/LatentSync-1.5 auxiliary/s3fd-619a316812.pth
+#                    (LatentSync's repo permanently bundles it; saves us
+#                     standing up a separate mirror just for s3fd).
+_WAV2LIP_HF_REPO = "Nekochu/Wav2Lip"
+_S3FD_HF_REPO = "ByteDance/LatentSync-1.5"
+_S3FD_HF_FILE = "auxiliary/s3fd-619a316812.pth"
 
 
 def _data_dir() -> Path:
@@ -43,6 +49,7 @@ def _data_dir() -> Path:
 
 
 def _models_dir() -> Path:
+    # Legacy flat-file dir, kept for FLICKIES_OFFLINE manual-stage workflow.
     d = _data_dir() / "models" / "wav2lip"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -59,49 +66,53 @@ def _select_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def _offline() -> bool:
+    return os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _ensure_s3fd_weights() -> Path:
-    """Download S3FD detector weights into models dir if missing."""
-    dst = _models_dir() / _S3FD_BASENAME
-    if dst.is_file() and dst.stat().st_size > 0:
-        return dst
-    import urllib.request
-    _log.info("downloading S3FD weights: url=%s dst=%s", _S3FD_URL, dst)
-    tmp = dst.with_suffix(".part")
-    urllib.request.urlretrieve(_S3FD_URL, str(tmp))
-    tmp.rename(dst)
-    return dst
-
-
-_WAV2LIP_WEIGHT_URLS = {
-    "wav2lip.pth": "https://huggingface.co/Nekochu/Wav2Lip/resolve/main/wav2lip.pth",
-    "wav2lip_gan.pth": "https://huggingface.co/Nekochu/Wav2Lip/resolve/main/wav2lip_gan.pth",
-}
+    """Return S3FD detector weights — fetched from the FULL LatentSync HF repo
+    snapshot. Pulling the whole repo (no allow_patterns) means the blob
+    store is reusable by any HF-aware tool, not just flickies."""
+    legacy = _models_dir() / "s3fd-619a316812.pth"
+    if legacy.is_file() and legacy.stat().st_size > 0:
+        return legacy
+    from huggingface_hub import snapshot_download
+    _log.info("fetching S3FD via HF snapshot", extra={"repo": _S3FD_HF_REPO})
+    snap = Path(snapshot_download(
+        repo_id=_S3FD_HF_REPO,
+        local_files_only=_offline(),
+    ))
+    return snap / _S3FD_HF_FILE
 
 
 def _ensure_wav2lip_weights(weights_file: str) -> Path:
-    """Return path to the checkpoint, auto-downloading from the HF mirror if absent.
+    """Return path to the checkpoint inside the Nekochu/Wav2Lip HF snapshot.
 
-    Auto-download is skipped when FLICKIES_OFFLINE=1 — operators in
-    air-gapped envs put the .pth into the models dir out of band.
+    Pulls the FULL repo (no allow_patterns) so the blob store mirrors
+    upstream — reusable by any HF-aware tool, not just flickies.
+    Includes the training-only `lipsync_expert.pth` and
+    `visual_quality_disc.pth` which flickies doesn't use, but the cost
+    (~1 GB extra) is the price of a clean reusable mirror.
     """
-    dst = _models_dir() / weights_file
-    if dst.is_file() and dst.stat().st_size > 0:
-        return dst
-    offline = os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
-    url = _WAV2LIP_WEIGHT_URLS.get(weights_file)
-    if offline or url is None:
+    legacy = _models_dir() / weights_file
+    if legacy.is_file() and legacy.stat().st_size > 0:
+        return legacy
+    from huggingface_hub import snapshot_download
+    _log.info("fetching wav2lip via HF snapshot", extra={"repo": _WAV2LIP_HF_REPO})
+    try:
+        snap = Path(snapshot_download(
+            repo_id=_WAV2LIP_HF_REPO,
+            local_files_only=_offline(),
+        ))
+    except Exception as e:  # noqa: BLE001
         raise http_error(
             400, CODE_BAD_REQUEST,
-            f"Wav2Lip weights missing at {dst}. Download {weights_file} into "
-            f"{_models_dir()} and retry. Default mirror: {url}",
-            expected_path=str(dst),
-        )
-    import urllib.request
-    _log.info("downloading wav2lip weights: url=%s dst=%s", url, dst)
-    tmp = dst.with_suffix(".part")
-    urllib.request.urlretrieve(url, str(tmp))
-    tmp.rename(dst)
-    return dst
+            f"Wav2Lip repo {_WAV2LIP_HF_REPO} unavailable: {e}. "
+            f"Manual fallback: place {weights_file} at {legacy} and retry "
+            f"(FLICKIES_OFFLINE=1).",
+        ) from e
+    return snap / weights_file
 
 
 def _load_wav2lip_model(checkpoint_path: Path, device: str):
@@ -110,7 +121,10 @@ def _load_wav2lip_model(checkpoint_path: Path, device: str):
 
     from flickies._vendor.wav2lip.models import Wav2Lip as Wav2LipNet
 
-    _log.info("loading wav2lip checkpoint: path=%s device=%s", checkpoint_path, device)
+    _log.info(
+        "loading wav2lip checkpoint",
+        extra={"path": str(checkpoint_path), "device": device, "engine_slug": "wav2lip"},
+    )
     if device == "cuda":
         ckpt = torch.load(str(checkpoint_path), map_location="cuda", weights_only=False)
     else:
@@ -181,7 +195,7 @@ class Wav2Lip(Engine):
             if self._device == "cuda" and torch.cuda.is_available():
                 torch.cuda.empty_cache()
             self._device = None
-            _log.info("wav2lip unloaded: slug=%s", self.slug)
+            _log.info("wav2lip unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
 
@@ -203,7 +217,7 @@ class Wav2Lip(Engine):
         except HTTPException:
             raise  # already a structured error envelope; bubble up untouched
         except Exception as e:  # noqa: BLE001
-            _log.exception("wav2lip inference failed: slug=%s", self.slug)
+            _log.exception("wav2lip inference failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"wav2lip inference failed: {e}") from e
         self._touch()
 

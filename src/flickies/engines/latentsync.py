@@ -24,10 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import shutil
-import subprocess
 import tempfile
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -38,51 +35,46 @@ from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
 _log = logging.getLogger("flickies.engines.latentsync")
 
 
-_MODEL_TAR_URL = "https://weights.replicate.delivery/default/chunyu-li/LatentSync/model.tar"
+# Pull the FULL official HF repo (no allow_patterns) — blob store mirrors
+# upstream so any HF-aware tool sees the same content-addressed blobs.
+# The training-only files (~3 GB) come along for the ride; the cost is
+# the price of a clean reusable mirror.
+_LATENTSYNC_HF_REPO = "ByteDance/LatentSync-1.5"
 
 
 def _data_dir() -> Path:
     return Path(os.environ.get("FLICKIES_DATA_DIR", "/data"))
 
 
-def _models_dir() -> Path:
-    d = _data_dir() / "models" / "latentsync"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+def _offline() -> bool:
+    return os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _ensure_weights() -> Path:
-    """Download + extract model.tar into models dir if absent.
+    """Snapshot-download the FULL LatentSync 1.5 HF repo.
 
-    The tar contains a full `checkpoints/` tree — we materialise it under
-    models/latentsync/ and use that as the working dir.
+    Returns the snapshot dir. Reusable across containers via HF_HOME.
+    Layout (preserved upstream):
+      - latentsync_unet.pt
+      - whisper/tiny.pt
+      - auxiliary/*  (s3fd, sfd_face, 2DFAN4, vgg16, etc.)
+      - config.json
+      - plus training blobs we don't use
     """
-    root = _models_dir()
-    ckpt = root / "latentsync_unet.pt"
-    if ckpt.is_file():
-        return root
-    offline = os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
-    if offline:
+    from huggingface_hub import snapshot_download
+    _log.info("fetching LatentSync 1.5 via HF snapshot", extra={"repo": _LATENTSYNC_HF_REPO})
+    try:
+        snapshot = snapshot_download(
+            repo_id=_LATENTSYNC_HF_REPO,
+            local_files_only=_offline(),
+        )
+    except Exception as e:  # noqa: BLE001
         raise http_error(
             400, CODE_BAD_REQUEST,
-            f"LatentSync weights missing at {ckpt}. Download {_MODEL_TAR_URL} "
-            f"and extract into {root} (offline mode).",
-        )
-    tar_dst = root / "model.tar"
-    _log.info("downloading LatentSync model.tar: url=%s dst=%s", _MODEL_TAR_URL, tar_dst)
-    tmp = tar_dst.with_suffix(".part")
-    urllib.request.urlretrieve(_MODEL_TAR_URL, str(tmp))
-    tmp.rename(tar_dst)
-    _log.info("extracting LatentSync model.tar")
-    subprocess.run(
-        ["tar", "-xf", str(tar_dst), "-C", str(root), "--strip-components=1"],
-        check=True,
-    )
-    try:
-        tar_dst.unlink()
-    except OSError:
-        pass
-    return root
+            f"LatentSync weights unavailable: {e}. Offline mode requires "
+            f"the snapshot pre-staged under HF_HOME=/data/hf.",
+        ) from e
+    return Path(snapshot)
 
 
 def _config_path() -> Path:
@@ -168,7 +160,7 @@ class LatentSync(Engine):
 
         self._pipeline = pipeline
         self._device = "cuda"
-        _log.info("latentsync loaded: device=%s dtype=%s", self._device, self._dtype)
+        _log.info("latentsync loaded", extra={"engine_slug": self.slug, "device": self._device, "dtype": str(self._dtype)})
 
     async def unload(self) -> None:
         if self._pipeline is None:
@@ -180,7 +172,7 @@ class LatentSync(Engine):
             self._device = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            _log.info("latentsync unloaded: slug=%s", self.slug)
+            _log.info("latentsync unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
 
@@ -201,7 +193,7 @@ class LatentSync(Engine):
         except HTTPException:
             raise
         except Exception as e:  # noqa: BLE001
-            _log.exception("latentsync inference failed: slug=%s", self.slug)
+            _log.exception("latentsync inference failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"latentsync inference failed: {e}") from e
         self._touch()
 

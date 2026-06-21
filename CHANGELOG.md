@@ -4,6 +4,102 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.2.0] - 2026-06-21
+
+Operational hardening pass — proper structured logging, boot-time weight
+prefetch, HuggingFace-cache reusable layout, bearer auth verified live.
+All ML pipelines remain live-verified on RTX 3060 12 GB.
+
+### Added
+
+- **Structured JSON logging** (`src/flickies/logging_config.py`) per
+  `~/.claude/rules/06-logging.md`:
+  - `RedactingJsonFormatter` (subclass of `python-json-logger`) — recursive
+    key + value redaction of `password|token|secret|api[_-]?key|authorization|cookie|set-cookie|hf_*|sk-ant-*|sk-*` at format time. Keys that match map to `[REDACTED]`; string values that match (e.g. `-----BEGIN PRIVATE KEY-----`) are also redacted.
+  - ContextVar-backed `with_scope(**kv)` / `get_scope()` / `ScopeFilter`. Every
+    log record carries `trace_id` + `request_id` (plus any custom scope attrs).
+  - Two handlers always: `StreamHandler(stderr)` + `RotatingFileHandler`
+    at `FLICKIES_LOG_FILE` (default `$FLICKIES_DATA_DIR/logs/flickies.log`,
+    50 MB × 5 backups).
+  - ISO 8601 UTC sub-ms `time` field (`2026-06-21T22:20:36.163Z`).
+  - Forces uvicorn's own loggers (`uvicorn`, `uvicorn.error`, `uvicorn.access`)
+    to use the same handlers — no ANSI-colour plain-text leak.
+  - Drops noisy stdlib fields (`taskName`, `color_message`).
+- **Audited every `_log.X("…%s", v)` call site** in the codebase (~30 sites)
+  and rewrote to `extra={…}` structured fields per
+  `~/.claude/rule-details/python/logging.md`. Includes a `reason` enum-style
+  field on every filter / fall-back branch.
+- **Trace + Request ID hardening** in `RequestIdMiddleware`:
+  - Validates inbound `X-Request-Id` shape (UUID v4 OR ULID, max 64 chars,
+    no newlines) before echoing. Garbage shape → mints a fresh UUID v4 (no
+    log-injection / forged-correlator vectors).
+  - Also accepts `X-Trace-Id` separately; defaults to `request_id` if absent.
+  - Both echoed back on `X-Request-Id` + `X-Trace-Id` response headers.
+- **Outbound HTTP propagation** (`src/flickies/fetch.py`): every `httpx`
+  GET (URL fetch) and PUT (output upload) now forwards the current
+  `X-Request-Id` + `X-Trace-Id` so the next hop's logs correlate with ours.
+- **Boot-time weight prefetch** (`src/flickies/prefetch.py`):
+  - Runs from `entrypoint.sh` BEFORE uvicorn starts.
+  - `FLICKIES_ENABLED_ENGINES=wav2lip,gfpgan` → prefetch those slugs only.
+  - `FLICKIES_PREFETCH_ALL=1` → prefetch every applicable engine
+    (respects `cuda_only` + `noncommercial` gates).
+  - `FLICKIES_OFFLINE=1` → skip prefetch (operator stages weights manually).
+  - First-request latency drops from "~2.5 min cold weight pull" to
+    "<200 ms" when prefetch is opted-in at boot.
+- **HuggingFace cache, full-repo blob layout** for every model engine:
+  - `wav2lip` / `wav2lip-gan` → `snapshot_download("Nekochu/Wav2Lip")`
+  - S3FD face detector → `snapshot_download("ByteDance/LatentSync-1.5")`
+    (LatentSync's repo permanently bundles s3fd in `auxiliary/`, saves us
+    standing up a mirror just for it)
+  - `gfpgan` → `snapshot_download("leonelhs/gfpgan")`
+  - `latentsync-1.5` → `snapshot_download("ByteDance/LatentSync-1.5")`
+  - **No `allow_patterns`** — full repo cloned via standard HF cache so
+    `/data/hf/hub/models--<org>--<name>/{blobs,snapshots,refs}/…` is
+    reusable by any other HF-aware tool, not just flickies.
+  - Replaces the prior raw `urllib.request.urlretrieve` calls + the 5 GB
+    `model.tar` tarball for LatentSync — both now obsolete.
+- **`FLICKIES_AUTH_TOKEN` live-verified** end-to-end on both CPU + CUDA
+  images. Any string works (`testme`, `AAAAAA`, UUID, output of
+  `openssl rand -hex 32`, etc.). Constant-time `hmac.compare_digest`.
+  `/healthz` exempt (probe-friendly).
+- **Auth posture announcement** in `entrypoint.sh` boot log — operators
+  see immediately whether bearer auth is enforced or disabled.
+
+### Changed
+
+- **Versioning compliance**: `pyproject.toml` `[project] version` is the
+  single canonical source. `src/flickies/__version__.py` derives via
+  `importlib.metadata.version("flickies")` (was hand-edited). `make
+  version` prints the tag for sanity-check before tagging. Makefile build
+  targets tag both `:vX.Y.Z` AND `:latest` (was only `:local`).
+- **OpenAPI `info.version` bumped to `0.2.0`** (spec rev tracks package).
+- **`python-json-logger==2.0.7`** added to lightweight runtime deps in
+  `pyproject.toml` + `uv.lock`.
+- **`huggingface_hub==0.30.2`** added to `heavy-deps-cpu.in` (was only
+  transitive on CUDA via diffusers — explicit pin keeps the CPU image's
+  wav2lip + gfpgan + s3fd downloaders working).
+
+### Fixed
+
+- `%(asctime)s` `%f` literal leaked into the `time` field — overrode
+  `RedactingJsonFormatter.formatTime` to emit proper sub-ms ISO 8601.
+- Inbound free-form `X-Request-Id` was echoed verbatim — small log-injection
+  risk if the value contained newlines or huge payloads. Now shape-validated.
+- Rate-limit middleware float-precision bug from a prior session re-verified
+  (regression test in `test_middleware.py`).
+
+### Removed
+
+- `src/flickies/_request_context.py` — superseded by `logging_config.py`'s
+  `with_scope` ContextVar.
+
+### Internal
+
+- 27/27 tests pass; new `test_request_id_rejects_invalid_shape` test added.
+- Live-verified on RTX 3060 (3.1–9.6 GB VRAM depending on engine).
+- HF cache live-inspected — every entry is a proper blob/snapshot symlink
+  pair (verified `ls -la /data/hf/hub/models--*/snapshots/<rev>/`).
+
 ## [0.1.0] - 2026-06-21
 
 Initial public release. Self-hosted video toolkit modelled after audiolla /

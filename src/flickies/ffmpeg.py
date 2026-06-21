@@ -34,7 +34,10 @@ async def _run(*args: str, capture_stdout: bool = False) -> tuple[bytes, bytes]:
     out, err = await proc.communicate()
     if proc.returncode != 0:
         cmd = shlex.join(args)
-        _log.warning("ffmpeg failed: cmd=%s rc=%s", cmd, proc.returncode)
+        _log.warning(
+            "ffmpeg failed",
+            extra={"cmd": cmd, "rc": proc.returncode, "reason": "ffmpeg_nonzero_exit"},
+        )
         raise http_error(
             500,
             CODE_FFMPEG_FAILED,

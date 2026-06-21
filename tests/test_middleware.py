@@ -35,8 +35,25 @@ def test_request_id_echoed_when_provided(base_env, monkeypatch) -> None:
     from flickies.server import build_app
 
     c = TestClient(build_app())
-    r = c.get("/v1/health", headers={"X-Request-Id": "my-correlator-123"})
-    assert r.headers.get("x-request-id") == "my-correlator-123"
+    # Valid UUIDv4 shape — should be echoed verbatim.
+    incoming = "11111111-2222-4333-8444-555555555555"
+    r = c.get("/v1/health", headers={"X-Request-Id": incoming})
+    assert r.headers.get("x-request-id") == incoming
+
+
+def test_request_id_rejects_invalid_shape(base_env, monkeypatch) -> None:
+    monkeypatch.delenv("FLICKIES_RATE_LIMIT_PER_MIN", raising=False)
+    from flickies.server import build_app
+
+    c = TestClient(build_app())
+    # Garbage shape — server mints its own; never echoes attacker input
+    # to avoid log-injection / forged-correlator vectors.
+    r = c.get("/v1/health", headers={"X-Request-Id": "not-a-uuid; DROP TABLE;\n"})
+    rid = r.headers.get("x-request-id", "")
+    assert rid and rid != "not-a-uuid; DROP TABLE;\n"
+    # Generated UUIDv4
+    import re
+    assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", rid)
 
 
 def test_rate_limit_429_after_capacity(base_env, monkeypatch) -> None:

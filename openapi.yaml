@@ -2,7 +2,7 @@ openapi: "3.0.3"
 
 info:
   title: flickies
-  version: "0.1.0"
+  version: "0.2.0"
   description: |
     Self-hosted video REST + MCP API. Lipsync (Wav2Lip + LatentSync 1.5),
     face restoration (GFPGAN), ffmpeg-driven video ops, async jobs, webhooks.

@@ -29,6 +29,22 @@ _FETCH_TIMEOUT = float(os.environ.get("FLICKIES_FETCH_TIMEOUT_SECS", "300"))
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
+def _scope_headers() -> dict[str, str]:
+    """Forward trace_id + request_id onto outbound calls so the next hop's
+    logs correlate with ours (per ~/.claude/rules/06-logging.md scope
+    propagation contract)."""
+    from flickies.logging_config import get_scope
+    s = get_scope()
+    out: dict[str, str] = {}
+    rid = s.get("request_id")
+    tid = s.get("trace_id")
+    if rid:
+        out["X-Request-Id"] = str(rid)
+    if tid:
+        out["X-Trace-Id"] = str(tid)
+    return out
+
+
 def _allow_private() -> bool:
     return os.environ.get("FLICKIES_ALLOW_PRIVATE_FETCH", "").strip().lower() in _TRUTHY
 
@@ -72,7 +88,7 @@ async def fetch_to_temp(url: str, *, suffix: str = "") -> Path:
     p = Path(tmp)
     try:
         async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT, follow_redirects=True) as client:
-            async with client.stream("GET", url) as resp:
+            async with client.stream("GET", url, headers=_scope_headers()) as resp:
                 if resp.status_code >= 400:
                     raise http_error(
                         502,
@@ -98,11 +114,8 @@ async def put_file(src: Path, url: str) -> int:
     with src.open("rb") as f:
         try:
             async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT) as client:
-                resp = await client.put(
-                    url,
-                    content=f,
-                    headers={"Content-Length": str(size)},
-                )
+                headers = {"Content-Length": str(size), **_scope_headers()}
+                resp = await client.put(url, content=f, headers=headers)
                 if resp.status_code >= 400:
                     raise http_error(
                         502,

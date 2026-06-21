@@ -42,7 +42,33 @@ curl -s -X POST http://localhost:8000/v1/video/info \
 
 CUDA image at `psyb0t/flickies:latest-cuda` runs every engine at usable speed. CPU image runs all ffmpeg ops (trim/concat/transcode incl. gif/scale/mux/extract/thumbnail-grid/info) + Wav2Lip-CPU (~44s for a 3s clip; OK for short ones). GFPGAN + LatentSync 1.5 are CUDA-only — CPU image refuses to load them.
 
-Weights are fetched lazily on first call per engine into `/data/models/<slug>/` (S3FD ~85 MB, Wav2Lip ~436 MB each, GFPGAN v1.4 ~350 MB, LatentSync model.tar ~5 GB). `FLICKIES_OFFLINE=1` disables auto-download (operators stage weights out of band).
+Weights live in the standard HuggingFace cache layout under `/data/hf/hub/models--<org>--<name>/{blobs,snapshots,refs}/…` — content-addressed blobs, snapshot-named symlinks, reusable by any other HF-aware tool sharing the bind mount (not just flickies). Sources:
+
+| engine | HF repo |
+|---|---|
+| `wav2lip` / `wav2lip-gan` | `Nekochu/Wav2Lip` |
+| S3FD detector | `ByteDance/LatentSync-1.5` (bundled in `auxiliary/`) |
+| `gfpgan` | `leonelhs/gfpgan` |
+| `latentsync-1.5` | `ByteDance/LatentSync-1.5` |
+
+**Lazy by default** — each engine fetches its repo on first request. Set `FLICKIES_ENABLED_ENGINES=wav2lip,gfpgan` (or `FLICKIES_PREFETCH_ALL=1`) to pull at boot before uvicorn starts. `FLICKIES_OFFLINE=1` disables auto-download (operators stage the snapshot dir manually).
+
+## Auth
+
+Bearer token set via env. Any string works:
+
+```bash
+docker run -e FLICKIES_AUTH_TOKEN=testme ...
+# clients then send: curl -H "Authorization: Bearer testme" ...
+```
+
+Unset → auth disabled. `/healthz` is always probe-exempt.
+
+## Logging
+
+Structured JSON to **both** stderr AND a rotating file at `FLICKIES_LOG_FILE` (default `/data/logs/flickies.log`, 50 MB × 5 backups). Every line carries `time` (ISO 8601 UTC sub-ms), `level`, `logger`, `file`, `line`, `func`, `msg`, `trace_id`, `request_id` + typed extras.
+
+Inbound `X-Request-Id` (UUID v4 OR ULID; garbage → server mints fresh) threads onto the logging scope via `ContextVar` + echoes back on the response. Outbound httpx fetches forward `X-Request-Id` + `X-Trace-Id` so the next hop's logs correlate. Sensitive keys (`authorization`, `cookie`, `*token*`, `*secret*`, `hf_*`, `sk-ant-*`) get `[REDACTED]` automatically at format time.
 
 ## MCP
 

@@ -2,8 +2,9 @@
 
 All three are pure-stdlib ASGI middleware so flickies stays dep-light.
 
-- RequestIdMiddleware: pull X-Request-Id from headers OR generate uuid4,
-  stash on ContextVar + echo back on the response.
+- RequestIdMiddleware: pull X-Request-Id from headers (validated shape) OR
+  generate UUID4. Also pulls X-Trace-Id (or reuses request_id). Stashes
+  both onto the logging scope via with_scope, echoes both back.
 - RateLimitMiddleware: per-IP token bucket. Defaults to 60 req/min,
   configurable via FLICKIES_RATE_LIMIT_PER_MIN.
 - IdempotencyMiddleware: dedupe POST writes by Idempotency-Key header.
@@ -15,19 +16,32 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from collections import OrderedDict
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from flickies._request_context import set_request_id
+from flickies.logging_config import reset_scope, with_scope
 
 
 _log = logging.getLogger("flickies.middleware")
 
 _X_REQUEST_ID_HEADER = b"x-request-id"
+_X_TRACE_ID_HEADER = b"x-trace-id"
 _IDEMPOTENCY_HEADER = b"idempotency-key"
+
+# Shape validators per ~/.claude/rule-details/python/logging.md
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_ULID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+def _shape_valid(s: str) -> bool:
+    return len(s) <= 64 and "\n" not in s and bool(_UUID_RE.match(s) or _ULID_RE.match(s))
 
 
 def _client_ip(scope: Scope) -> str:
@@ -51,7 +65,7 @@ def _get_header(scope: Scope, name: bytes) -> str | None:
 # ── request id ────────────────────────────────────────────────────────────
 
 class RequestIdMiddleware:
-    """Echo X-Request-Id back and stash it on a ContextVar for logs."""
+    """Seed (trace_id, request_id) onto the logging scope; echo both back."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -61,17 +75,25 @@ class RequestIdMiddleware:
             await self.app(scope, receive, send)
             return
 
-        rid = _get_header(scope, _X_REQUEST_ID_HEADER) or uuid.uuid4().hex
-        set_request_id(rid)
+        incoming_rid = _get_header(scope, _X_REQUEST_ID_HEADER) or ""
+        rid = incoming_rid if _shape_valid(incoming_rid) else str(uuid.uuid4())
+        incoming_tid = _get_header(scope, _X_TRACE_ID_HEADER) or ""
+        tid = incoming_tid if _shape_valid(incoming_tid) else rid
 
-        async def send_with_rid(message: Message) -> None:
+        token = with_scope(request_id=rid, trace_id=tid)
+
+        async def send_with_ids(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
                 headers.append((_X_REQUEST_ID_HEADER, rid.encode("latin-1")))
+                headers.append((_X_TRACE_ID_HEADER, tid.encode("latin-1")))
                 message = {**message, "headers": headers}
             await send(message)
 
-        await self.app(scope, receive, send_with_rid)
+        try:
+            await self.app(scope, receive, send_with_ids)
+        finally:
+            reset_scope(token)
 
 
 # ── rate limit (per-IP token bucket) ─────────────────────────────────────
@@ -127,7 +149,8 @@ class RateLimitMiddleware:
         if scope["type"] != "http" or self.capacity <= 0:
             await self.app(scope, receive, send)
             return
-        if scope.get("path", "") in self._EXEMPT_PATHS:
+        path = scope.get("path", "")
+        if path in self._EXEMPT_PATHS:
             await self.app(scope, receive, send)
             return
 
@@ -135,7 +158,10 @@ class RateLimitMiddleware:
         async with self._lock:
             ok = self._take(ip)
         if not ok:
-            _log.warning("rate_limit: ip=%s path=%s", ip, scope.get("path", ""))
+            _log.warning(
+                "rate_limit refused",
+                extra={"ip": ip, "path": path, "reason": "bucket_empty"},
+            )
             body = json.dumps({
                 "code": "RATE_LIMITED",
                 "message": "rate limit exceeded; back off",

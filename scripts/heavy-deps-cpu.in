@@ -25,3 +25,7 @@ tqdm==4.66.5
 # import is broken on torchvision >= 0.17 (the module was removed); a
 # common community patch is to alias it; we ship the patch in entrypoint.sh.
 gfpgan==1.3.8
+# Proper HF cache layout (blobs/ + snapshots/) for all weight downloads.
+# Already pulled in transitively on CUDA by diffusers; explicit pin keeps
+# the CPU image's wav2lip + gfpgan + s3fd downloaders working too.
+huggingface_hub==0.30.2

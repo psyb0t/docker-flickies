@@ -62,22 +62,44 @@ async def deliver(url: str, payload: dict[str, Any]) -> bool:
                 resp = await client.post(url, content=body, headers=headers)
             if 200 <= resp.status_code < 300:
                 _log.info(
-                    "webhook delivered: url=%s status=%s attempt=%d",
-                    url, resp.status_code, attempt + 1,
+                    "webhook delivered",
+                    extra={
+                        "url": url,
+                        "status": resp.status_code,
+                        "attempt": attempt + 1,
+                    },
                 )
                 return True
             _log.warning(
-                "webhook non-2xx: url=%s status=%s attempt=%d",
-                url, resp.status_code, attempt + 1,
+                "webhook non-2xx",
+                extra={
+                    "url": url,
+                    "status": resp.status_code,
+                    "attempt": attempt + 1,
+                    "reason": "upstream_non_2xx",
+                },
             )
         except httpx.HTTPError as e:
             _log.warning(
-                "webhook transport error: url=%s err=%s attempt=%d",
-                url, e, attempt + 1,
+                "webhook transport error",
+                extra={
+                    "url": url,
+                    "err": str(e),
+                    "attempt": attempt + 1,
+                    "reason": "transport_error",
+                },
             )
 
         if attempt >= len(_BACKOFF_SCHEDULE):
-            _log.error("webhook dead-letter: url=%s attempts=%d body=%s", url, attempt + 1, body[:512])
+            _log.error(
+                "webhook dead-letter",
+                extra={
+                    "url": url,
+                    "attempts": attempt + 1,
+                    "body_preview": body[:512].decode("utf-8", errors="replace"),
+                    "reason": "max_retries_exhausted",
+                },
+            )
             return False
         await asyncio.sleep(_BACKOFF_SCHEDULE[attempt])
         attempt += 1

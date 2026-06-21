@@ -28,10 +28,10 @@ from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
 _log = logging.getLogger("flickies.engines.gfpgan")
 
 
-_GFPGAN_WEIGHT_URL = (
-    "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
-)
-_GFPGAN_BASENAME = "GFPGANv1.4.pth"
+# HF mirror: leonelhs/gfpgan repo, file GFPGANv1.4.pth. Proper blob/snapshot
+# cache layout — reusable across containers via HF_HOME.
+_GFPGAN_HF_REPO = "leonelhs/gfpgan"
+_GFPGAN_HF_FILE = "GFPGANv1.4.pth"
 
 
 def _data_dir() -> Path:
@@ -39,9 +39,14 @@ def _data_dir() -> Path:
 
 
 def _models_dir() -> Path:
+    # Legacy flat-stage dir for FLICKIES_OFFLINE workflows.
     d = _data_dir() / "models" / "gfpgan"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _offline() -> bool:
+    return os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _select_device() -> str:
@@ -56,22 +61,30 @@ def _select_device() -> str:
 
 
 def _ensure_gfpgan_weights() -> Path:
-    dst = _models_dir() / _GFPGAN_BASENAME
-    if dst.is_file() and dst.stat().st_size > 0:
-        return dst
-    offline = os.environ.get("FLICKIES_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
-    if offline:
+    """Return path to GFPGANv1.4.pth inside the leonelhs/gfpgan HF snapshot.
+
+    Pulls the FULL repo (no allow_patterns) — blob store mirrors upstream
+    so any HF-aware tool sees the same blobs. The repo includes other
+    GFPGAN versions + RestoreFormer + CodeFormer (~1.5 GB total); flickies
+    uses just v1.4.
+    """
+    legacy = _models_dir() / _GFPGAN_HF_FILE
+    if legacy.is_file() and legacy.stat().st_size > 0:
+        return legacy
+    from huggingface_hub import snapshot_download
+    _log.info("fetching gfpgan via HF snapshot", extra={"repo": _GFPGAN_HF_REPO})
+    try:
+        snap = Path(snapshot_download(
+            repo_id=_GFPGAN_HF_REPO,
+            local_files_only=_offline(),
+        ))
+    except Exception as e:  # noqa: BLE001
         raise http_error(
             400, CODE_BAD_REQUEST,
-            f"GFPGAN weights missing at {dst}. Download {_GFPGAN_BASENAME} "
-            f"manually (offline mode).",
-        )
-    import urllib.request
-    _log.info("downloading GFPGAN weights: url=%s dst=%s", _GFPGAN_WEIGHT_URL, dst)
-    tmp = dst.with_suffix(".part")
-    urllib.request.urlretrieve(_GFPGAN_WEIGHT_URL, str(tmp))
-    tmp.rename(dst)
-    return dst
+            f"GFPGAN repo {_GFPGAN_HF_REPO} unavailable: {e}. Manual fallback: "
+            f"place {_GFPGAN_HF_FILE} at {legacy} and retry (FLICKIES_OFFLINE=1).",
+        ) from e
+    return snap / _GFPGAN_HF_FILE
 
 
 class GFPGAN(Engine):
@@ -93,7 +106,7 @@ class GFPGAN(Engine):
         device = _select_device()
         ckpt = _ensure_gfpgan_weights()
         from gfpgan import GFPGANer
-        _log.info("loading gfpgan: path=%s device=%s", ckpt, device)
+        _log.info("loading gfpgan", extra={"path": str(ckpt), "device": device, "engine_slug": "gfpgan"})
         # arch='clean' is the GFPGANv1.4 architecture.
         self._restorer = GFPGANer(
             model_path=str(ckpt),
@@ -115,7 +128,7 @@ class GFPGAN(Engine):
             if self._device == "cuda" and torch.cuda.is_available():
                 torch.cuda.empty_cache()
             self._device = None
-            _log.info("gfpgan unloaded: slug=%s", self.slug)
+            _log.info("gfpgan unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
 
@@ -135,7 +148,7 @@ class GFPGAN(Engine):
         except HTTPException:
             raise
         except Exception as e:  # noqa: BLE001
-            _log.exception("gfpgan restore failed: slug=%s", self.slug)
+            _log.exception("gfpgan restore failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"gfpgan restore failed: {e}") from e
         self._touch()
 

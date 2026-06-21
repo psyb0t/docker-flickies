@@ -60,7 +60,7 @@ class Registry:
         if engine.slug in self._engines:
             raise ValueError(f"engine already registered: {engine.slug}")
         self._engines[engine.slug] = engine
-        log.info("engine registered: slug=%s", engine.slug)
+        log.info("engine registered", extra={"engine_slug": engine.slug})
 
     def get(self, slug: str) -> Engine:
         try:
@@ -87,8 +87,12 @@ class Registry:
                 old = self._engines.get(current)
                 if old is not None and old.loaded():
                     log.info(
-                        "hot-swap eviction: current=%s requested=%s — unloading %s",
-                        current, slug, current,
+                        "hot-swap eviction",
+                        extra={
+                            "engine_slug": current,
+                            "requested": slug,
+                            "reason": "different_engine_requested",
+                        },
                     )
                     await old.unload()
                 self._loaded_slug = None
@@ -108,8 +112,13 @@ class Registry:
                 continue
             if idle >= threshold:
                 log.info(
-                    "idle eviction: slug=%s idle=%.1fs threshold=%.1fs",
-                    slug, idle, threshold,
+                    "idle eviction",
+                    extra={
+                        "engine_slug": slug,
+                        "idle_secs": idle,
+                        "threshold_secs": threshold,
+                        "reason": "idle_timeout",
+                    },
                 )
                 await eng.unload()
                 if self._loaded_slug == slug:
@@ -131,8 +140,11 @@ class Registry:
             return
         self._sweeper_task = asyncio.create_task(self._sweep_loop())
         log.info(
-            "sweeper started: interval=%.1fs threshold=%.1fs",
-            _sweep_interval_secs(), _idle_unload_secs(),
+            "sweeper started",
+            extra={
+                "interval_secs": _sweep_interval_secs(),
+                "threshold_secs": _idle_unload_secs(),
+            },
         )
 
     async def stop_sweeper(self) -> None:
