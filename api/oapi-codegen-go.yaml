@@ -1,0 +1,13 @@
+# Config for oapi-codegen (Go client generation).
+# https://github.com/oapi-codegen/oapi-codegen
+package: flickiesclient
+output: pkg/clients/go/client.gen.go
+generate:
+  models: true
+  client: true
+
+output-options:
+  # Suffix every generated response wrapper struct with `HTTPResponse` so
+  # field names like `status` (in our `HealthResponse` model) don't collide
+  # with the wrapper's own `Status` field/method.
+  response-type-suffix: HTTPResponse

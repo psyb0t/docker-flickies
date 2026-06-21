@@ -1,0 +1,39 @@
+# Heavy ML/DSP deps for the CUDA prod image. Hand-edited spec.
+# Compile to requirements-heavy-cuda.txt via scripts/compile_heavy_deps.sh.
+# Same stack as CPU, different torch flavor (cu124 wheel index).
+#
+# LatentSync 1.5 needs diffusers + transformers + xformers — added when
+# that engine body lands.
+setuptools==75.6.0
+torch==2.5.1
+torchvision==0.20.1
+opencv-python-headless==4.10.0.84
+librosa==0.10.2
+soundfile==0.12.1
+numpy==1.26.4
+numba==0.60.0
+scipy==1.13.1
+tqdm==4.66.5
+gfpgan==1.3.8
+# LatentSync 1.5 stack — SD-1.5 latent-space lipsync via diffusers + AnimateDiff.
+# CUDA-only. Heavy: diffusers + transformers + mediapipe + decord + kornia +
+# insightface + onnxruntime-gpu. Pin to LatentSync repo's exact versions.
+diffusers==0.32.2
+transformers==4.48.0
+accelerate==0.26.1
+einops==0.7.0
+omegaconf==2.3.0
+mediapipe==0.10.13
+decord==0.6.0
+imageio==2.31.1
+imageio-ffmpeg==0.5.1
+ffmpeg-python==0.2.0
+python_speech_features==0.6
+scenedetect==0.6.1
+lpips==0.1.4
+kornia==0.8.0
+insightface==0.7.3
+onnxruntime-gpu==1.21.0
+face-alignment==1.4.1
+huggingface-hub==0.30.2
+DeepCache==0.1.1

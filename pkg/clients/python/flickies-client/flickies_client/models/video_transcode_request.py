@@ -1,0 +1,321 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+from ..models.base_video_output_request_output_format import BaseVideoOutputRequestOutputFormat
+from ..types import UNSET, Unset
+
+if TYPE_CHECKING:
+    from ..models.video_transcode_request_gif_options_type_0 import VideoTranscodeRequestGifOptionsType0
+
+
+T = TypeVar("T", bound="VideoTranscodeRequest")
+
+
+@_attrs_define
+class VideoTranscodeRequest:
+    """Universal re-encode. `output_format` in BaseVideoOutputRequest drives
+    the filter graph (`mp4` / `webm` / `mov` / `mkv` → standard transcode;
+    `gif` → palette-aware two-pass). `fps`, codec, crf, preset all apply
+    to the re-encode; gif-specific options live under `gif_options`.
+
+        Attributes:
+            file_path (None | str | Unset): FILES_DIR-relative path of an already-uploaded video.
+            file_url (None | str | Unset): HTTP(S) URL the server fetches.
+            output_path (None | str | Unset):
+            output_url (None | str | Unset):
+            async_job (bool | Unset):  Default: False.
+            webhook_url (None | str | Unset): Notify URL on async completion (HMAC-signed).
+            output_format (BaseVideoOutputRequestOutputFormat | Unset):  Default: BaseVideoOutputRequestOutputFormat.MP4.
+            video_codec (None | str | Unset):
+            audio_codec (None | str | Unset):
+            crf (int | None | Unset):
+            preset (None | str | Unset):
+            fps (float | None | Unset): Re-encode at this frame rate. Applies to all output formats.
+            gif_options (None | Unset | VideoTranscodeRequestGifOptionsType0): Only consulted when output_format=gif.
+    """
+
+    file_path: None | str | Unset = UNSET
+    file_url: None | str | Unset = UNSET
+    output_path: None | str | Unset = UNSET
+    output_url: None | str | Unset = UNSET
+    async_job: bool | Unset = False
+    webhook_url: None | str | Unset = UNSET
+    output_format: BaseVideoOutputRequestOutputFormat | Unset = BaseVideoOutputRequestOutputFormat.MP4
+    video_codec: None | str | Unset = UNSET
+    audio_codec: None | str | Unset = UNSET
+    crf: int | None | Unset = UNSET
+    preset: None | str | Unset = UNSET
+    fps: float | None | Unset = UNSET
+    gif_options: None | Unset | VideoTranscodeRequestGifOptionsType0 = UNSET
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        from ..models.video_transcode_request_gif_options_type_0 import VideoTranscodeRequestGifOptionsType0
+
+        file_path: None | str | Unset
+        if isinstance(self.file_path, Unset):
+            file_path = UNSET
+        else:
+            file_path = self.file_path
+
+        file_url: None | str | Unset
+        if isinstance(self.file_url, Unset):
+            file_url = UNSET
+        else:
+            file_url = self.file_url
+
+        output_path: None | str | Unset
+        if isinstance(self.output_path, Unset):
+            output_path = UNSET
+        else:
+            output_path = self.output_path
+
+        output_url: None | str | Unset
+        if isinstance(self.output_url, Unset):
+            output_url = UNSET
+        else:
+            output_url = self.output_url
+
+        async_job = self.async_job
+
+        webhook_url: None | str | Unset
+        if isinstance(self.webhook_url, Unset):
+            webhook_url = UNSET
+        else:
+            webhook_url = self.webhook_url
+
+        output_format: str | Unset = UNSET
+        if not isinstance(self.output_format, Unset):
+            output_format = self.output_format.value
+
+        video_codec: None | str | Unset
+        if isinstance(self.video_codec, Unset):
+            video_codec = UNSET
+        else:
+            video_codec = self.video_codec
+
+        audio_codec: None | str | Unset
+        if isinstance(self.audio_codec, Unset):
+            audio_codec = UNSET
+        else:
+            audio_codec = self.audio_codec
+
+        crf: int | None | Unset
+        if isinstance(self.crf, Unset):
+            crf = UNSET
+        else:
+            crf = self.crf
+
+        preset: None | str | Unset
+        if isinstance(self.preset, Unset):
+            preset = UNSET
+        else:
+            preset = self.preset
+
+        fps: float | None | Unset
+        if isinstance(self.fps, Unset):
+            fps = UNSET
+        else:
+            fps = self.fps
+
+        gif_options: dict[str, Any] | None | Unset
+        if isinstance(self.gif_options, Unset):
+            gif_options = UNSET
+        elif isinstance(self.gif_options, VideoTranscodeRequestGifOptionsType0):
+            gif_options = self.gif_options.to_dict()
+        else:
+            gif_options = self.gif_options
+
+        field_dict: dict[str, Any] = {}
+        field_dict.update(self.additional_properties)
+        field_dict.update({})
+        if file_path is not UNSET:
+            field_dict["file_path"] = file_path
+        if file_url is not UNSET:
+            field_dict["file_url"] = file_url
+        if output_path is not UNSET:
+            field_dict["output_path"] = output_path
+        if output_url is not UNSET:
+            field_dict["output_url"] = output_url
+        if async_job is not UNSET:
+            field_dict["async_job"] = async_job
+        if webhook_url is not UNSET:
+            field_dict["webhook_url"] = webhook_url
+        if output_format is not UNSET:
+            field_dict["output_format"] = output_format
+        if video_codec is not UNSET:
+            field_dict["video_codec"] = video_codec
+        if audio_codec is not UNSET:
+            field_dict["audio_codec"] = audio_codec
+        if crf is not UNSET:
+            field_dict["crf"] = crf
+        if preset is not UNSET:
+            field_dict["preset"] = preset
+        if fps is not UNSET:
+            field_dict["fps"] = fps
+        if gif_options is not UNSET:
+            field_dict["gif_options"] = gif_options
+
+        return field_dict
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.video_transcode_request_gif_options_type_0 import VideoTranscodeRequestGifOptionsType0
+
+        d = dict(src_dict)
+
+        def _parse_file_path(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        file_path = _parse_file_path(d.pop("file_path", UNSET))
+
+        def _parse_file_url(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        file_url = _parse_file_url(d.pop("file_url", UNSET))
+
+        def _parse_output_path(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        output_path = _parse_output_path(d.pop("output_path", UNSET))
+
+        def _parse_output_url(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        output_url = _parse_output_url(d.pop("output_url", UNSET))
+
+        async_job = d.pop("async_job", UNSET)
+
+        def _parse_webhook_url(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        webhook_url = _parse_webhook_url(d.pop("webhook_url", UNSET))
+
+        _output_format = d.pop("output_format", UNSET)
+        output_format: BaseVideoOutputRequestOutputFormat | Unset
+        if isinstance(_output_format, Unset):
+            output_format = UNSET
+        else:
+            output_format = BaseVideoOutputRequestOutputFormat(_output_format)
+
+        def _parse_video_codec(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        video_codec = _parse_video_codec(d.pop("video_codec", UNSET))
+
+        def _parse_audio_codec(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        audio_codec = _parse_audio_codec(d.pop("audio_codec", UNSET))
+
+        def _parse_crf(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        crf = _parse_crf(d.pop("crf", UNSET))
+
+        def _parse_preset(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        preset = _parse_preset(d.pop("preset", UNSET))
+
+        def _parse_fps(data: object) -> float | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(float | None | Unset, data)
+
+        fps = _parse_fps(d.pop("fps", UNSET))
+
+        def _parse_gif_options(data: object) -> None | Unset | VideoTranscodeRequestGifOptionsType0:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                gif_options_type_0 = VideoTranscodeRequestGifOptionsType0.from_dict(data)
+
+                return gif_options_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | VideoTranscodeRequestGifOptionsType0, data)
+
+        gif_options = _parse_gif_options(d.pop("gif_options", UNSET))
+
+        video_transcode_request = cls(
+            file_path=file_path,
+            file_url=file_url,
+            output_path=output_path,
+            output_url=output_url,
+            async_job=async_job,
+            webhook_url=webhook_url,
+            output_format=output_format,
+            video_codec=video_codec,
+            audio_codec=audio_codec,
+            crf=crf,
+            preset=preset,
+            fps=fps,
+            gif_options=gif_options,
+        )
+
+        video_transcode_request.additional_properties = d
+        return video_transcode_request
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties

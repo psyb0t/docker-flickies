@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Compile hash-locked requirements files for the heavy ML stack used by
+# the prod images. Two variants — CPU (torch+cpu) and CUDA (torch from cu124).
+#
+# Supply-chain gate: HEAVY_EXCLUDE_NEWER pins the maximum upload date for
+# dependency resolution. Bump manually when intentionally upgrading heavy-stack
+# packages. Set ahead of pyproject's exclude-newer because some PyTorch-ecosystem
+# packages have missing upload-time metadata. Hash verification (--generate-hashes)
+# is the primary supply-chain protection; the date gate is secondary.
+#
+# Generated files are committed; Dockerfiles install via
+# `uv pip install --require-hashes -r requirements-heavy-<variant>.txt`.
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+PYTHON_VERSION=3.12
+HEAVY_EXCLUDE_NEWER="2026-12-31T00:00:00Z"
+
+compile_variant() {
+    local variant="$1"
+    local extra_index="$2"
+    local in_src="${PROJECT_ROOT}/scripts/heavy-deps-${variant}.in"
+    local out_file="${PROJECT_ROOT}/requirements-heavy-${variant}.txt"
+
+    echo ">> compiling ${variant} -> ${out_file}"
+    # uv resolves [tool.uv].exclude-newer from the *input file's* directory
+    # tree, not just cwd. Copying the .in to /tmp keeps HEAVY_EXCLUDE_NEWER
+    # in uncontested effect. uv ALSO resolves it from the output file's
+    # directory — write to /tmp too, then move into place.
+    local tmp_in tmp_out tmp_override
+    tmp_in="$(mktemp /tmp/heavy-deps-${variant}-XXXXX.in)"
+    tmp_out="$(mktemp /tmp/heavy-deps-${variant}-out-XXXXX.txt)"
+    tmp_override="$(mktemp /tmp/heavy-deps-override-XXXXX.txt)"
+    cp "${in_src}" "${tmp_in}"
+    cp "${PROJECT_ROOT}/scripts/heavy-deps-overrides.txt" "${tmp_override}"
+    (
+        cd /tmp
+        UV_EXCLUDE_NEWER="${HEAVY_EXCLUDE_NEWER}" uv pip compile \
+            --python-version "${PYTHON_VERSION}" \
+            --generate-hashes \
+            --extra-index-url "${extra_index}" \
+            --index-strategy unsafe-best-match \
+            --override "${tmp_override}" \
+            --output-file "${tmp_out}" \
+            "${tmp_in}"
+    )
+    mv "${tmp_out}" "${out_file}"
+    rm -f "${tmp_in}" "${tmp_override}"
+}
+
+compile_variant cpu  "https://download.pytorch.org/whl/cpu"
+compile_variant cuda "https://download.pytorch.org/whl/cu124"
+
+echo
+echo "Done. Commit:"
+echo "  ${PROJECT_ROOT}/requirements-heavy-cpu.txt"
+echo "  ${PROJECT_ROOT}/requirements-heavy-cuda.txt"

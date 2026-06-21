@@ -1,0 +1,27 @@
+# Heavy ML/DSP deps for the CPU prod image. Hand-edited spec.
+# Compile to requirements-heavy-cpu.txt via scripts/compile_heavy_deps.sh.
+# Versions duplicated in Dockerfile comments must match this file.
+#
+# torch (CPU) + cv2 + librosa stack — drives Wav2Lip / S3FD face detection
+# end-to-end. GFPGAN is added when its engine body lands (next session).
+#
+# pkg_resources guard: a couple of transitive deps (numba/llvmlite) do
+# `import pkg_resources` which only exists if setuptools is installed.
+# Modern uv envs don't include it by default.
+setuptools==75.6.0
+# +cpu suffix isn't needed — pytorch CPU wheel index publishes plain `torch==X.Y.Z`
+# wheels that are CPU-only. The compile script's --extra-index-url points there.
+torch==2.5.1
+torchvision==0.20.1
+opencv-python-headless==4.10.0.84
+librosa==0.10.2
+soundfile==0.12.1
+numpy==1.26.4
+numba==0.60.0
+scipy==1.13.1
+tqdm==4.66.5
+# GFPGAN v1.4 face restore — chains after lipsync. basicsr + facexlib are
+# transitive deps. basicsr's `from torchvision.transforms.functional_tensor`
+# import is broken on torchvision >= 0.17 (the module was removed); a
+# common community patch is to alias it; we ship the patch in entrypoint.sh.
+gfpgan==1.3.8

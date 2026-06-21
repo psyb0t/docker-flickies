@@ -1,0 +1,39 @@
+{
+  "engines": {
+    "wav2lip": {
+      "executor": "wav2lip",
+      "variant": "base",
+      "weights_file": "wav2lip.pth",
+      "weights_size_mb": 436,
+      "cuda_only": false,
+      "noncommercial": true,
+      "vram_gb_min": 3,
+      "description": "Wav2Lip base (Rudrabha/Wav2Lip, primepake/wav2lip_288x288 fork) — max lip-sync accuracy, 96x96 native. Pair with GFPGAN for sharp mouth. CC-BY-NC (LRS2 training data) — set FLICKIES_ENABLE_NONCOMMERCIAL=1 to load."
+    },
+    "wav2lip-gan": {
+      "executor": "wav2lip",
+      "variant": "gan",
+      "weights_file": "wav2lip_gan.pth",
+      "weights_size_mb": 436,
+      "cuda_only": false,
+      "noncommercial": true,
+      "vram_gb_min": 3,
+      "description": "Wav2Lip + GAN refiner — sharper mouth standalone, slightly worse sync than base. CC-BY-NC — set FLICKIES_ENABLE_NONCOMMERCIAL=1 to load."
+    },
+    "latentsync-1.5": {
+      "executor": "latentsync",
+      "variant": "1.5",
+      "cuda_only": true,
+      "vram_gb_min": 8,
+      "description": "LatentSync 1.5 (ByteDance, Apache-2.0) — SD-1.5 latent-space lipsync, commercial-safe default on CUDA. Slower than Wav2Lip, no opt-in gate. Fits RTX 3060 12GB."
+    },
+    "gfpgan": {
+      "executor": "gfpgan",
+      "weights_file": "GFPGANv1.4.pth",
+      "weights_size_mb": 348,
+      "cuda_only": false,
+      "vram_gb_min": 2,
+      "description": "GFPGAN v1.4 face restore (TencentARC/GFPGAN, Apache-2.0) — chains after Wav2Lip to fix the soft 96x96 mouth crop."
+    }
+  }
+}

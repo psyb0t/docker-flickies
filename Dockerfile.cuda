@@ -1,0 +1,76 @@
+# syntax=docker/dockerfile:1.7
+#
+# CUDA image — nvidia/cuda 12.4 runtime + ffmpeg + python 3.12 + torch CUDA
+# + Wav2Lip (+ S3FD) + GFPGAN. LatentSync 1.5 hooks in next session.
+#
+# Targets the RTX 3060 12GB ceiling. ~3-4 GB on disk for torch + deps;
+# weights download on first use into /data/models/<engine>/.
+#
+# Supply chain: same two-stage pattern as Dockerfile.
+#   1. Light deps via uv sync --frozen against uv.lock
+#   2. Heavy ML stack via uv pip install --require-hashes against
+#      requirements-heavy-cuda.txt (compiled by scripts/compile_heavy_deps.sh).
+
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH=/opt/venv/bin:${PATH} \
+    HF_HOME=/data/hf
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        ca-certificates \
+        curl \
+        git \
+        ffmpeg \
+        libgl1 \
+        libglib2.0-0 \
+        build-essential \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+    && ln -sf /usr/bin/python3.12 /usr/local/bin/python3 \
+    && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.15 /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+# 1) Light deps from uv.lock — hash-verified, reproducible.
+COPY pyproject.toml uv.lock ./
+COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
+
+# 2) Heavy stack — torch CUDA + cv2 + librosa + numpy + numba + scipy + soundfile + tqdm.
+#    Same hash-locking caveat as Dockerfile — torch transitives lack hashes,
+#    so --require-hashes is disabled until that's fixed. Version pins +
+#    exclude-newer in pyproject are the supply-chain backstop today.
+COPY requirements-heavy-cuda.txt ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /opt/venv/bin/python --no-config \
+        --extra-index-url https://download.pytorch.org/whl/cu124 \
+        --index-strategy unsafe-best-match \
+        -r requirements-heavy-cuda.txt
+
+RUN sed -i 's|from torchvision.transforms.functional_tensor import rgb_to_grayscale|from torchvision.transforms.functional import rgb_to_grayscale|' \
+        /opt/venv/lib/python3.12/site-packages/basicsr/data/degradations.py \
+    && python -c "from basicsr.data import degradations; print('basicsr import OK')"
+
+COPY engines.json /app/engines.json
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+RUN mkdir -p /data
+
+EXPOSE 8000
+ENTRYPOINT ["/app/entrypoint.sh"]

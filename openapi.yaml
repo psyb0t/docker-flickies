@@ -1,0 +1,770 @@
+openapi: "3.0.3"
+
+info:
+  title: flickies
+  version: "0.1.0"
+  description: |
+    Self-hosted video REST + MCP API. Lipsync (Wav2Lip + LatentSync 1.5),
+    face restoration (GFPGAN), ffmpeg-driven video ops, async jobs, webhooks.
+
+    The MCP endpoint at /v1/mcp is JSON-RPC over a streamable HTTP
+    transport and is NOT described in this document — use an MCP client.
+
+    ## License posture
+
+    Wav2Lip variants are trained on LRS2 (non-commercial). The server refuses
+    to load them unless `FLICKIES_ENABLE_NONCOMMERCIAL=1`. LatentSync 1.5
+    (Apache-2.0) is the commercial-safe default.
+
+    ## API contract
+
+    Every video endpoint takes a JSON body. Multipart upload is supported
+    only on `PUT /v1/files/{path}` — the local-staging interface.
+
+    **Input** — exactly one of:
+      - `file_path` (FILES_DIR-relative, server reads from local /v1/files
+        staging area)
+      - `file_url` (any HTTP/HTTPS URL the server fetches)
+
+    **Output** — exactly one of:
+      - `output_path` (server writes to FILES_DIR/<path>, response JSON is
+        `{path, size, ...}`; caller downloads via `GET /v1/files/<path>`)
+      - `output_url` (server PUTs to the URL — presigned PUT or
+        PUT-accepting endpoint; response JSON is `{url, size, ...}`)
+
+    `async_job=true` auto-stages to `jobs/{id}.{ext}` under FILES_DIR if
+    neither output is given.
+
+servers:
+  - url: http://localhost:8000
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Health
+    description: Liveness probe + discovery.
+  - name: Engines
+    description: List, inspect, evict registered engines. One model resident at a time on the GPU — see hot-swap eviction in /v1/engines.
+  - name: Files
+    description: Local staging area — upload, download, delete files referenced by other endpoints.
+  - name: Jobs
+    description: Async-job queue — poll long-running operations.
+  - name: Lipsync
+    description: Drive a face video/image from an audio track.
+  - name: Restore
+    description: Face restoration via GFPGAN — clean up Wav2Lip output or old footage.
+  - name: Video Transform
+    description: Pure-ffmpeg video ops — trim, concat, transcode (incl. gif + fps + codec), scale, mux audio, extract audio, thumbnail grid.
+  - name: Info
+    description: ffprobe metadata.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    EngineSlug:
+      in: path
+      name: slug
+      required: true
+      schema:
+        type: string
+      description: Engine slug. Engines are ML-only (`wav2lip`, `wav2lip-gan`, `latentsync-1.5`, `gfpgan`); ffmpeg is the standard CPU backend and isn't an engine.
+    FilesPath:
+      in: path
+      name: path
+      required: true
+      schema:
+        type: string
+      description: FILES_DIR-relative path (slashes allowed).
+    JobIdPath:
+      in: path
+      name: job_id
+      required: true
+      schema:
+        type: string
+      description: UUID of an async job.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+      description: |
+        Optional opaque token for safe POST retries. Server replays the cached
+        response for any subsequent POST with the same (key, method, path)
+        within the LRU window. RFC 9580 (Idempotency-Key header).
+    XRequestIdReq:
+      in: header
+      name: X-Request-Id
+      required: false
+      schema:
+        type: string
+      description: |
+        Optional correlator. If not provided, the server generates a UUID4
+        and echoes it back on the `X-Request-Id` response header. Threaded
+        through every log line via ContextVar.
+
+  headers:
+    XRequestIdHeader:
+      schema: { type: string }
+      description: Server-generated or client-echoed request correlator. Always present on every response.
+
+  responses:
+    "400":
+      description: Bad request — invalid input or constraint violation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    "401":
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    "403":
+      description: Non-commercial opt-in gate refused (FLICKIES_ENABLE_NONCOMMERCIAL not set).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    "404":
+      description: Engine or file not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    "413":
+      description: Payload too large.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+    "422":
+      description: Validation failed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+
+  schemas:
+    # ── error envelope ─────────────────────────────────────────────────────
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable UPPER_SNAKE_CASE error code.
+          examples: [BAD_REQUEST, UNAUTHORIZED, NOT_FOUND, NONCOMMERCIAL_GATE_REFUSED, VALIDATION_FAILED, INTERNAL_SERVER_ERROR]
+        message:
+          type: string
+          description: Human-readable error description.
+        details:
+          type: object
+          additionalProperties: true
+          description: Optional structured detail bag — field-by-field validation errors, upstream provider IDs, etc.
+
+    # ── discovery ──────────────────────────────────────────────────────────
+    HealthResponse:
+      type: object
+      required: [status, version, device, available_engines, noncommercial_enabled]
+      properties:
+        status: { type: string, examples: [ok] }
+        version: { type: string }
+        device: { type: string, description: "auto / cpu / cuda" }
+        available_engines:
+          type: array
+          items: { type: string }
+        enabled_engines:
+          type: array
+          items: { type: string }
+        loaded_engine:
+          type: string
+          nullable: true
+          description: Currently resident engine slug, or null if none loaded.
+        noncommercial_enabled:
+          type: boolean
+
+    EngineInfo:
+      type: object
+      required: [slug, executor, loaded, noncommercial]
+      properties:
+        slug: { type: string }
+        executor: { type: string }
+        variant: { type: string, nullable: true }
+        loaded: { type: boolean }
+        noncommercial: { type: boolean }
+        cuda_only: { type: boolean }
+        vram_gb_min: { type: number, nullable: true }
+        description: { type: string }
+        last_used_secs_ago:
+          type: number
+          nullable: true
+          description: Seconds since this engine last served a request; null if never used.
+
+    EngineList:
+      type: object
+      required: [engines]
+      properties:
+        engines:
+          type: array
+          items: { $ref: "#/components/schemas/EngineInfo" }
+
+    # ── jobs / files / async ───────────────────────────────────────────────
+    JobAcceptedResponse:
+      type: object
+      required: [job_id, status]
+      properties:
+        job_id: { type: string, format: uuid }
+        status: { type: string, examples: [accepted] }
+
+    JobStatusResponse:
+      type: object
+      required: [job_id, status]
+      properties:
+        job_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [pending, running, complete, failed, cancelled]
+        result:
+          type: object
+          nullable: true
+          additionalProperties: true
+        error:
+          type: object
+          nullable: true
+          properties:
+            code: { type: string }
+            message: { type: string }
+
+    StagedOutputResponse:
+      type: object
+      required: [path, size]
+      properties:
+        path: { type: string }
+        size: { type: integer }
+        sha256: { type: string, nullable: true }
+        duration_sec: { type: number, nullable: true }
+        width: { type: integer, nullable: true }
+        height: { type: integer, nullable: true }
+
+    UrlOutputResponse:
+      type: object
+      required: [url, size]
+      properties:
+        url: { type: string, format: uri }
+        size: { type: integer }
+        sha256: { type: string, nullable: true }
+
+    # ── reusable input/output base ─────────────────────────────────────────
+    BaseVideoInputRequest:
+      type: object
+      description: Exactly one of file_path / file_url MUST be provided. Enforced at handler boundary.
+      properties:
+        file_path:
+          type: string
+          nullable: true
+          description: FILES_DIR-relative path of an already-uploaded video.
+        file_url:
+          type: string
+          nullable: true
+          format: uri
+          description: HTTP(S) URL the server fetches.
+
+    BaseVideoOutputRequest:
+      type: object
+      description: Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
+      properties:
+        output_path: { type: string, nullable: true }
+        output_url: { type: string, nullable: true, format: uri }
+        async_job: { type: boolean, default: false }
+        webhook_url: { type: string, nullable: true, format: uri, description: "Notify URL on async completion (HMAC-signed)." }
+        output_format:
+          type: string
+          enum: [mp4, webm, mov, mkv]
+          default: mp4
+
+    # ── lipsync ────────────────────────────────────────────────────────────
+    VideoLipsyncRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      description: |
+        Exactly one of face_path / face_url required (driving face).
+        Exactly one of audio_path / audio_url required (driving audio).
+      properties:
+        face_path:
+          type: string
+          nullable: true
+          description: FILES_DIR-relative face video or still image.
+        face_url:
+          type: string
+          nullable: true
+          format: uri
+        audio_path:
+          type: string
+          nullable: true
+          description: FILES_DIR-relative path of the driving audio (wav/mp3/m4a).
+        audio_url:
+          type: string
+          nullable: true
+          format: uri
+          description: http(s) URL of the driving audio.
+        engine:
+          type: string
+          enum: [wav2lip, wav2lip-gan, latentsync-1.5]
+          default: latentsync-1.5
+          description: |
+            wav2lip / wav2lip-gan require FLICKIES_ENABLE_NONCOMMERCIAL=1
+            (LRS2 training data is non-commercial). latentsync-1.5 is the
+            commercial-safe default on CUDA.
+        restore_face:
+          type: boolean
+          default: false
+          description: Chain GFPGAN over the output to clean up the face region (recommended after wav2lip*).
+
+    # ── restore ────────────────────────────────────────────────────────────
+    VideoRestoreRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      properties:
+        engine:
+          type: string
+          enum: [gfpgan]
+          default: gfpgan
+
+    # ── ffmpeg ops ─────────────────────────────────────────────────────────
+    VideoTrimRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      required: [start_sec, end_sec]
+      properties:
+        start_sec: { type: number, minimum: 0 }
+        end_sec: { type: number, minimum: 0 }
+
+    VideoConcatRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      description: Concatenate ≥2 videos in order. Exactly one of inputs_paths / inputs_urls must be provided.
+      properties:
+        inputs_paths:
+          type: array
+          nullable: true
+          items: { type: string }
+          minItems: 2
+        inputs_urls:
+          type: array
+          nullable: true
+          items: { type: string, format: uri }
+          minItems: 2
+
+    VideoTranscodeRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      description: |
+        Universal re-encode. `output_format` in BaseVideoOutputRequest drives
+        the filter graph (`mp4` / `webm` / `mov` / `mkv` → standard transcode;
+        `gif` → palette-aware two-pass). `fps`, codec, crf, preset all apply
+        to the re-encode; gif-specific options live under `gif_options`.
+      properties:
+        video_codec: { type: string, nullable: true, examples: [libx264, libx265, libvpx-vp9, libaom-av1] }
+        audio_codec: { type: string, nullable: true, examples: [aac, libopus, copy] }
+        crf: { type: integer, nullable: true, minimum: 0, maximum: 51 }
+        preset: { type: string, nullable: true, examples: [ultrafast, fast, medium, slow] }
+        fps: { type: number, nullable: true, minimum: 1, maximum: 240, description: "Re-encode at this frame rate. Applies to all output formats." }
+        gif_options:
+          type: object
+          nullable: true
+          description: Only consulted when output_format=gif.
+          properties:
+            width: { type: integer, nullable: true }
+            loop: { type: integer, default: 0, description: "0 = infinite" }
+            palette_mode:
+              type: string
+              enum: [full, diff, single]
+              default: full
+
+    VideoScaleRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      required: [width, height]
+      properties:
+        width: { type: integer, minimum: 16 }
+        height: { type: integer, minimum: 16 }
+        keep_aspect:
+          type: boolean
+          default: true
+          description: If true, pad/crop to maintain source aspect.
+
+    VideoMuxAudioRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoOutputRequest"
+      type: object
+      required: [video_path_or_url, audio_path_or_url]
+      properties:
+        video_path_or_url: { type: string }
+        audio_path_or_url: { type: string }
+        replace_existing_audio:
+          type: boolean
+          default: true
+
+    VideoExtractAudioRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+      type: object
+      properties:
+        audio_format:
+          type: string
+          enum: [wav, mp3, m4a, ogg, flac]
+          default: wav
+        output_path: { type: string, nullable: true }
+        output_url: { type: string, nullable: true, format: uri }
+
+    VideoThumbnailGridRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+      type: object
+      required: [rows, cols]
+      properties:
+        rows: { type: integer, minimum: 1, maximum: 16 }
+        cols: { type: integer, minimum: 1, maximum: 16 }
+        cell_width: { type: integer, default: 320 }
+        cell_height: { type: integer, default: 180 }
+        output_path: { type: string, nullable: true }
+        output_url: { type: string, nullable: true, format: uri }
+
+    VideoInfoRequest:
+      allOf:
+        - $ref: "#/components/schemas/BaseVideoInputRequest"
+      type: object
+
+    VideoInfoResponse:
+      type: object
+      properties:
+        duration_sec: { type: number }
+        width: { type: integer }
+        height: { type: integer }
+        fps: { type: number }
+        video_codec: { type: string }
+        audio_codec: { type: string, nullable: true }
+        bitrate: { type: integer, nullable: true }
+        container_format: { type: string, nullable: true }
+        size_bytes: { type: integer }
+
+paths:
+  /v1/health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness + discovery
+      security: []
+      responses:
+        "200":
+          description: Server status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+
+  /v1/engines:
+    get:
+      tags: [Engines]
+      operationId: listEngines
+      summary: List registered engines + load state.
+      responses:
+        "200":
+          description: Engine list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EngineList" }
+        "401": { $ref: "#/components/responses/401" }
+
+  /v1/engines/{slug}:
+    delete:
+      tags: [Engines]
+      operationId: evictEngine
+      summary: Evict the engine from VRAM (no-op if not loaded).
+      parameters:
+        - $ref: "#/components/parameters/EngineSlug"
+      responses:
+        "204":
+          description: Evicted.
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+
+  /v1/files/{path}:
+    put:
+      tags: [Files]
+      operationId: putFile
+      summary: Upload a video/audio file to the local staging area.
+      parameters:
+        - $ref: "#/components/parameters/FilesPath"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Uploaded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StagedOutputResponse" }
+        "401": { $ref: "#/components/responses/401" }
+        "413": { $ref: "#/components/responses/413" }
+    get:
+      tags: [Files]
+      operationId: getFile
+      summary: Download a staged file.
+      parameters:
+        - $ref: "#/components/parameters/FilesPath"
+      responses:
+        "200":
+          description: File stream.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+    delete:
+      tags: [Files]
+      operationId: deleteFile
+      parameters:
+        - $ref: "#/components/parameters/FilesPath"
+      responses:
+        "204":
+          description: Deleted.
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+
+  /v1/jobs/{job_id}:
+    get:
+      tags: [Jobs]
+      operationId: getJob
+      parameters:
+        - $ref: "#/components/parameters/JobIdPath"
+      responses:
+        "200":
+          description: Job status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobStatusResponse" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+
+  /v1/video/lipsync:
+    post:
+      tags: [Lipsync]
+      operationId: postVideoLipsync
+      summary: Drive a face from an audio track.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoLipsyncRequest" }
+      responses:
+        "200":
+          description: Sync result.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Async accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "403": { $ref: "#/components/responses/403" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/restore:
+    post:
+      tags: [Restore]
+      operationId: postVideoRestore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoRestoreRequest" }
+      responses:
+        "200":
+          description: Sync result.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Async accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/trim:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoTrim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoTrimRequest" }
+      responses:
+        "200":
+          description: Trimmed.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "400": { $ref: "#/components/responses/400" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/concat:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoConcat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoConcatRequest" }
+      responses:
+        "200":
+          description: Concatenated.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/transcode:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoTranscode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoTranscodeRequest" }
+      responses:
+        "200":
+          description: Transcoded.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/scale:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoScale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoScaleRequest" }
+      responses:
+        "200":
+          description: Scaled.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/mux_audio:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoMuxAudio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoMuxAudioRequest" }
+      responses:
+        "200":
+          description: Muxed.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/extract_audio:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoExtractAudio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoExtractAudioRequest" }
+      responses:
+        "200":
+          description: Audio extracted.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/thumbnail_grid:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoThumbnailGrid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoThumbnailGridRequest" }
+      responses:
+        "200":
+          description: PNG grid produced.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+
+  /v1/video/info:
+    post:
+      tags: [Info]
+      operationId: postVideoInfo
+      summary: All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoInfoRequest" }
+      responses:
+        "200":
+          description: ffprobe metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VideoInfoResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }

@@ -1,0 +1,81 @@
+[project]
+name = "flickies"
+version = "0.1.0"
+description = "Self-hosted video REST + MCP API — lipsync (Wav2Lip + LatentSync 1.5), face restoration (GFPGAN), pure-ffmpeg video ops, async jobs, webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec."
+license = { text = "WTFPL" }
+requires-python = ">=3.10,<3.13"
+authors = [{ name = "psyb0t" }]
+keywords = [
+    "video",
+    "lipsync",
+    "wav2lip",
+    "latentsync",
+    "gfpgan",
+    "face-restoration",
+    "ffmpeg",
+    "fastapi",
+    "mcp",
+    "openapi",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+
+# Lightweight runtime deps only — heavy ML stack (torch, wav2lip, latentsync,
+# gfpgan) installed via Dockerfile because:
+#   1. torch flavor (CPU vs CUDA) is chosen by --index-url at install time
+#   2. lipsync model transitive resolution is fragile; explicit pins in Dockerfile
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn==0.34.2",
+    "pydantic==2.11.4",
+    "python-multipart==0.0.20",
+    "httpx==0.28.1",
+    "mcp==1.27.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/psyb0t/docker-flickies"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flickies"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.uv]
+# Supply-chain defense: only install pkg versions older than `exclude-newer`.
+# Bumped by `make pkg-*` targets before any dep mutation via
+# scripts/bump_exclude_newer.sh, which rewrites this line to UTC midnight
+# 7 days ago. The 7-day floor is the supply-chain attack window — fresh
+# wheels published in the last week are invisible to the resolver, giving
+# the community time to catch and yank malicious uploads before they
+# enter our lockfile. NEVER drift forward automatically. Manual edits are
+# fine but go through the make targets.
+exclude-newer = "2026-06-14T00:00:00Z"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ARG", "SIM", "C4"]
+ignore = ["E501"]  # ruff format handles line length
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG001"]  # pytest hooks have unused params
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__", "**/_generated.py"]
+pythonVersion = "3.12"
+reportMissingImports = "none"  # heavy ML libs live only in prod images
