@@ -1,6 +1,6 @@
 [project]
 name = "flickies"
-version = "0.2.0"
+version = "0.3.0"
 description = "Self-hosted video REST + MCP API — lipsync (Wav2Lip + LatentSync 1.5), face restoration (GFPGAN), pure-ffmpeg video ops, async jobs, webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec."
 license = { text = "WTFPL" }
 requires-python = ">=3.10,<3.13"

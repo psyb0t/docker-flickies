@@ -25,6 +25,13 @@ class VideoTrimRequest:
         async_job (bool | Unset):  Default: False.
         webhook_url (None | str | Unset): Notify URL on async completion (HMAC-signed).
         output_format (BaseVideoOutputRequestOutputFormat | Unset):  Default: BaseVideoOutputRequestOutputFormat.MP4.
+        precise (bool | Unset): When false (default), trim uses `-c copy` for speed — fast, but
+            ffmpeg can only cut on keyframe boundaries, so `start_sec` snaps
+            to the nearest keyframe and may eat up to one GOP (~seconds) of
+            leading content. When true, trim re-encodes with H.264 + AAC for
+            frame-accurate boundaries (slower; single-generation, visually
+            transparent).
+             Default: False.
     """
 
     start_sec: float
@@ -36,6 +43,7 @@ class VideoTrimRequest:
     async_job: bool | Unset = False
     webhook_url: None | str | Unset = UNSET
     output_format: BaseVideoOutputRequestOutputFormat | Unset = BaseVideoOutputRequestOutputFormat.MP4
+    precise: bool | Unset = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -79,6 +87,8 @@ class VideoTrimRequest:
         if not isinstance(self.output_format, Unset):
             output_format = self.output_format.value
 
+        precise = self.precise
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -101,6 +111,8 @@ class VideoTrimRequest:
             field_dict["webhook_url"] = webhook_url
         if output_format is not UNSET:
             field_dict["output_format"] = output_format
+        if precise is not UNSET:
+            field_dict["precise"] = precise
 
         return field_dict
 
@@ -165,6 +177,8 @@ class VideoTrimRequest:
         else:
             output_format = BaseVideoOutputRequestOutputFormat(_output_format)
 
+        precise = d.pop("precise", UNSET)
+
         video_trim_request = cls(
             start_sec=start_sec,
             end_sec=end_sec,
@@ -175,6 +189,7 @@ class VideoTrimRequest:
             async_job=async_job,
             webhook_url=webhook_url,
             output_format=output_format,
+            precise=precise,
         )
 
         video_trim_request.additional_properties = d

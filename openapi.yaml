@@ -2,7 +2,7 @@ openapi: "3.0.3"
 
 info:
   title: flickies
-  version: "0.2.0"
+  version: "0.3.0"
   description: |
     Self-hosted video REST + MCP API. Lipsync (Wav2Lip + LatentSync 1.5),
     face restoration (GFPGAN), ffmpeg-driven video ops, async jobs, webhooks.
@@ -344,6 +344,16 @@ components:
       properties:
         start_sec: { type: number, minimum: 0 }
         end_sec: { type: number, minimum: 0 }
+        precise:
+          type: boolean
+          default: false
+          description: |
+            When false (default), trim uses `-c copy` for speed — fast, but
+            ffmpeg can only cut on keyframe boundaries, so `start_sec` snaps
+            to the nearest keyframe and may eat up to one GOP (~seconds) of
+            leading content. When true, trim re-encodes with H.264 + AAC for
+            frame-accurate boundaries (slower; single-generation, visually
+            transparent).
 
     VideoConcatRequest:
       allOf:
@@ -361,6 +371,16 @@ components:
           nullable: true
           items: { type: string, format: uri }
           minItems: 2
+        precise:
+          type: boolean
+          default: false
+          description: |
+            When false (default), concat uses the concat demuxer with
+            `-c copy` — fast, but requires all inputs to share identical
+            codec / timebase / SAR (mixing different encoders corrupts or
+            fails). When true, the concat demuxer re-encodes with uniform
+            H.264 + AAC so mixed inputs join cleanly (slower; single-
+            generation re-encode).
 
     VideoTranscodeRequest:
       allOf:

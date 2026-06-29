@@ -498,7 +498,10 @@ def build_app() -> FastAPI:
         return await _ffmpeg_handler(
             body, "mp4",
             lambda eng, src, out: eng.trim(
-                src, out, float(body["start_sec"]), float(body["end_sec"]),
+                src, out,
+                float(body["start_sec"]),
+                float(body["end_sec"]),
+                precise=bool(body.get("precise", False)),
             ),
         )
 
@@ -511,6 +514,8 @@ def build_app() -> FastAPI:
 
         tmp_to_clean: list[Path] = []
 
+        precise = bool(body.get("precise", False))
+
         async def work(out: Path) -> None:
             if inputs_urls:
                 resolved: list[Path] = []
@@ -518,10 +523,10 @@ def build_app() -> FastAPI:
                     t = await fetch_to_temp(url, suffix=".mp4")
                     resolved.append(t)
                     tmp_to_clean.append(t)
-                await ffmpeg.concat(resolved, out)
+                await ffmpeg.concat(resolved, out, precise=precise)
             else:
                 resolved = [resolve_safe(files_dir(cfg.data_dir), p) for p in inputs_paths]
-                await ffmpeg.concat(resolved, out)
+                await ffmpeg.concat(resolved, out, precise=precise)
 
         try:
             status, payload = await _run_or_schedule(body, "mp4", work)

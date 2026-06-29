@@ -48,6 +48,15 @@ async def _run(*args: str, capture_stdout: bool = False) -> tuple[bytes, bytes]:
     return out, err
 
 
+# Precise re-encode params shared by trim(precise=True) and concat(precise=True).
+# H.264 CRF 18 + AAC 192k = visually transparent single-generation re-encode.
+_PRECISE_VIDEO_CODEC = "libx264"
+_PRECISE_CRF = "18"
+_PRECISE_PRESET = "veryfast"
+_PRECISE_AUDIO_CODEC = "aac"
+_PRECISE_AUDIO_BITRATE = "192k"
+
+
 class FFmpeg:
     """Plain helper. NOT an Engine. Wrap ffmpeg + ffprobe as async methods."""
 
@@ -56,9 +65,36 @@ class FFmpeg:
         return out.decode("utf-8", errors="replace").splitlines()[0]
 
     # ── trim ───────────────────────────────────────────────────────────
-    async def trim(self, src: Path, dst: Path, start: float, end: float) -> None:
+    async def trim(
+        self,
+        src: Path,
+        dst: Path,
+        start: float,
+        end: float,
+        *,
+        precise: bool = False,
+    ) -> None:
+        # Default (precise=False) uses `-c copy` for speed but can only cut on
+        # keyframe boundaries — ffmpeg snaps `start` to the nearest keyframe,
+        # potentially eating up to one GOP of leading content (~8s at 30fps
+        # with a 250-frame GOP). Set precise=True to force a frame-accurate
+        # single-generation re-encode (slower; visually transparent at CRF 18).
         if end <= start:
             raise http_error(400, "BAD_REQUEST", "end_sec must be > start_sec")
+        if precise:
+            await _run(
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src),
+                "-ss", str(start),
+                "-to", str(end),
+                "-c:v", _PRECISE_VIDEO_CODEC,
+                "-crf", _PRECISE_CRF,
+                "-preset", _PRECISE_PRESET,
+                "-c:a", _PRECISE_AUDIO_CODEC,
+                "-b:a", _PRECISE_AUDIO_BITRATE,
+                str(dst),
+            )
+            return
         await _run(
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
             "-ss", str(start),
@@ -70,22 +106,45 @@ class FFmpeg:
 
 
     # ── concat ─────────────────────────────────────────────────────────
-    async def concat(self, inputs: list[Path], dst: Path) -> None:
+    async def concat(
+        self,
+        inputs: list[Path],
+        dst: Path,
+        *,
+        precise: bool = False,
+    ) -> None:
+        # Default uses the concat demuxer with `-c copy` — fast but requires
+        # all inputs to share identical codec / timebase / SAR params. When
+        # they don't (e.g. mixing sources from different encoders), the result
+        # corrupts or fails. Set precise=True to re-encode through the concat
+        # demuxer with uniform x264 + AAC params so any inputs concat cleanly.
         if len(inputs) < 2:
             raise http_error(400, "BAD_REQUEST", "concat needs >= 2 inputs")
-        # Concat demuxer needs an absolute-path list file.
         listing = "\n".join(f"file '{p.resolve()}'" for p in inputs) + "\n"
         list_file = dst.parent / f".{dst.name}.concat.txt"
         list_file.parent.mkdir(parents=True, exist_ok=True)
         list_file.write_text(listing)
         try:
-            await _run(
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                "-f", "concat", "-safe", "0",
-                "-i", str(list_file),
-                "-c", "copy",
-                str(dst),
-            )
+            if precise:
+                await _run(
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-f", "concat", "-safe", "0",
+                    "-i", str(list_file),
+                    "-c:v", _PRECISE_VIDEO_CODEC,
+                    "-crf", _PRECISE_CRF,
+                    "-preset", _PRECISE_PRESET,
+                    "-c:a", _PRECISE_AUDIO_CODEC,
+                    "-b:a", _PRECISE_AUDIO_BITRATE,
+                    str(dst),
+                )
+            else:
+                await _run(
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-f", "concat", "-safe", "0",
+                    "-i", str(list_file),
+                    "-c", "copy",
+                    str(dst),
+                )
         finally:
             try:
                 list_file.unlink()

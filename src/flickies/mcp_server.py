@@ -259,13 +259,20 @@ def build_mcp_server(
         file_url: str | None = None,
         start_sec: float = 0.0,
         end_sec: float = 0.0,
+        precise: bool = False,
         output_path: str | None = None,
     ) -> dict[str, Any]:
-        """Trim a video to [start_sec, end_sec]."""
+        """Trim a video to [start_sec, end_sec].
+
+        precise=False (default): stream-copy. Fast, but cuts snap to the
+        nearest keyframe — start can land seconds late if start_sec falls
+        mid-GOP. precise=True: re-encode for frame-accurate boundaries
+        (slower; single-generation, visually transparent).
+        """
         dst = _resolve_output(output_path)
         src, is_tmp = await _resolve_video(file_path, file_url)
         try:
-            await ffmpeg.trim(src, dst, start_sec, end_sec)
+            await ffmpeg.trim(src, dst, start_sec, end_sec, precise=precise)
         finally:
             if is_tmp:
                 try:
@@ -278,9 +285,16 @@ def build_mcp_server(
     async def concat(
         inputs_paths: list[str] | None = None,
         inputs_urls: list[str] | None = None,
+        precise: bool = False,
         output_path: str | None = None,
     ) -> dict[str, Any]:
-        """Concat >=2 videos in order."""
+        """Concat >=2 videos in order.
+
+        precise=False (default): concat demuxer with stream-copy. Requires
+        all inputs to share codec/timebase/SAR. precise=True: re-encode
+        through the concat demuxer with uniform x264 + AAC so mixed inputs
+        join cleanly (slower; single-generation re-encode).
+        """
         dst = _resolve_output(output_path)
         if bool(inputs_paths) == bool(inputs_urls):
             raise ValueError("exactly one of inputs_paths / inputs_urls required")
@@ -295,7 +309,7 @@ def build_mcp_server(
             else:
                 assert inputs_paths is not None
                 resolved = [resolve_safe(files_dir(cfg.data_dir), p) for p in inputs_paths]
-            await ffmpeg.concat(resolved, dst)
+            await ffmpeg.concat(resolved, dst, precise=precise)
         finally:
             for t in tmps:
                 try:

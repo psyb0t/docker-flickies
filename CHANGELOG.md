@@ -4,6 +4,54 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.0] - 2026-06-29
+
+Frame-accurate `precise` flag on the ffmpeg-ops `trim` + `concat` endpoints.
+
+### Added
+
+- **`precise: bool` (default `false`) on `POST /v1/video/trim`**
+  (`openapi.yaml` → `VideoTrimRequest`, `src/flickies/ffmpeg.py`,
+  `src/flickies/server.py`, MCP `trim` tool in `src/flickies/mcp_server.py`).
+  - `precise=false` (default) keeps the existing `-c copy` stream-copy
+    behavior — fast, but ffmpeg can only cut on keyframe boundaries and
+    `start_sec` snaps to the nearest keyframe, potentially eating up to
+    one GOP (~seconds at 30 fps / 250-frame GOP) of leading content.
+  - `precise=true` re-encodes via `libx264 -crf 18 -preset veryfast`
+    + `aac -b:a 192k` for frame-accurate boundaries. Single-generation
+    re-encode, visually transparent. Slower than stream-copy; use when
+    you need the exact requested start (e.g. stitching short speech
+    clips at arbitrary timestamps).
+- **`precise: bool` (default `false`) on `POST /v1/video/concat`**
+  (same files). Default keeps the concat demuxer with `-c copy` —
+  requires all inputs to share codec / timebase / SAR. `precise=true`
+  re-encodes through the concat demuxer with uniform x264 + AAC params
+  so mixed-encoder inputs join cleanly.
+- Both MCP tools (`trim`, `concat`) gain a `precise` boolean parameter
+  with docstrings explaining the tradeoff.
+
+### Changed
+
+- **`openapi.yaml` `info.version` bumped to `0.3.0`** (spec rev tracks
+  package).
+- Regenerated typed clients from the spec:
+  - `src/flickies/schema/_generated.py` (Pydantic models — `VideoTrimRequest`
+    + `VideoConcatRequest` carry the new `precise` field).
+  - `pkg/clients/python/flickies-client/.../video_trim_request.py`
+    (sync + async Python client).
+
+### Notes
+
+- The Go client struct `VideoTrimRequest` / `VideoConcatRequest` does
+  not surface `start_sec` / `end_sec` / `precise` due to a pre-existing
+  `oapi-codegen` limitation with `allOf`-composed schemas (the inline
+  `properties:` block on the composed type is dropped). Same behavior
+  as prior releases for `start_sec` / `end_sec`; not new. Go callers
+  marshal the body via `map[string]any` or a hand-written struct in
+  the meantime.
+- Pure feature addition; no breaking changes; defaults preserve prior
+  endpoint behavior exactly.
+
 ## [0.2.0] - 2026-06-21
 
 Operational hardening pass — proper structured logging, boot-time weight
