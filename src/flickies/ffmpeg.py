@@ -25,7 +25,15 @@ _log = logging.getLogger("flickies.ffmpeg")
 
 
 async def _run(*args: str, capture_stdout: bool = False) -> tuple[bytes, bytes]:
-    """Run ffmpeg/ffprobe; raise 500 ffmpeg_failed on non-zero exit."""
+    """Run ffmpeg/ffprobe; raise 500 ffmpeg_failed on non-zero exit.
+
+    Single choke point for every ffmpeg/ffprobe invocation — DEBUG here
+    captures the full command (inputs, output path, all flags) + the
+    completion, so every op is reconstructable from the logs without each
+    method re-logging its own args.
+    """
+    cmd = shlex.join(args)
+    _log.debug("ffmpeg exec", extra={"tool": args[0], "cmd": cmd})
     proc = await asyncio.create_subprocess_exec(
         *args,
         stdout=asyncio.subprocess.PIPE if capture_stdout else asyncio.subprocess.DEVNULL,
@@ -33,7 +41,6 @@ async def _run(*args: str, capture_stdout: bool = False) -> tuple[bytes, bytes]:
     )
     out, err = await proc.communicate()
     if proc.returncode != 0:
-        cmd = shlex.join(args)
         _log.warning(
             "ffmpeg failed",
             extra={"cmd": cmd, "rc": proc.returncode, "reason": "ffmpeg_nonzero_exit"},
@@ -45,6 +52,10 @@ async def _run(*args: str, capture_stdout: bool = False) -> tuple[bytes, bytes]:
             cmd=cmd,
             stderr=err.decode("utf-8", errors="replace")[-2048:],
         )
+    _log.debug(
+        "ffmpeg ok",
+        extra={"tool": args[0], "rc": 0, "stdout_bytes": len(out or b"")},
+    )
     return out, err
 
 
@@ -81,6 +92,16 @@ class FFmpeg:
         # single-generation re-encode (slower; visually transparent at CRF 18).
         if end <= start:
             raise http_error(400, "BAD_REQUEST", "end_sec must be > start_sec")
+        _log.debug(
+            "trim start",
+            extra={
+                "src": str(src),
+                "dst": str(dst),
+                "start_sec": start,
+                "end_sec": end,
+                "reason": "precise_reencode" if precise else "stream_copy",
+            },
+        )
         if precise:
             await _run(
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
@@ -120,6 +141,15 @@ class FFmpeg:
         # demuxer with uniform x264 + AAC params so any inputs concat cleanly.
         if len(inputs) < 2:
             raise http_error(400, "BAD_REQUEST", "concat needs >= 2 inputs")
+        _log.debug(
+            "concat start",
+            extra={
+                "inputs": [str(p) for p in inputs],
+                "dst": str(dst),
+                "n_inputs": len(inputs),
+                "reason": "precise_reencode" if precise else "stream_copy",
+            },
+        )
         listing = "\n".join(f"file '{p.resolve()}'" for p in inputs) + "\n"
         list_file = dst.parent / f".{dst.name}.concat.txt"
         list_file.parent.mkdir(parents=True, exist_ok=True)
@@ -166,7 +196,22 @@ class FFmpeg:
         fps: float | None = None,
         gif_options: dict[str, Any] | None = None,
     ) -> None:
-        if output_format.lower() == "gif":
+        is_gif = output_format.lower() == "gif"
+        _log.debug(
+            "transcode start",
+            extra={
+                "src": str(src),
+                "dst": str(dst),
+                "output_format": output_format,
+                "video_codec": video_codec,
+                "audio_codec": audio_codec,
+                "crf": crf,
+                "preset": preset,
+                "fps": fps,
+                "reason": "gif_palette_two_pass" if is_gif else "standard_reencode",
+            },
+        )
+        if is_gif:
             await self._transcode_gif(src, dst, fps=fps, gif_options=gif_options or {})
             return
         cmd: list[str] = [

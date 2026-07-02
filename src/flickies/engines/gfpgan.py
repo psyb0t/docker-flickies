@@ -14,10 +14,12 @@ original audio over the restored frames at the end (ffmpeg pass).
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -121,16 +123,20 @@ class GFPGAN(Engine):
     async def unload(self) -> None:
         if self._restorer is None:
             return
+        # Null the ref FIRST, then gc.collect() — the GFPGANer wraps an
+        # nn.Module graph with reference cycles that refcount del won't free.
+        # empty_cache() only returns already-freed blocks, so it needs the
+        # collect to run first. Order: null ref → collect → empty_cache.
+        self._restorer = None
+        self._device = None
+        gc.collect()
         try:
             import torch
-            del self._restorer
-            self._restorer = None
-            if self._device == "cuda" and torch.cuda.is_available():
+            if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            self._device = None
-            _log.info("gfpgan unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
+        _log.info("gfpgan unloaded", extra={"engine_slug": self.slug})
 
     async def health(self) -> dict[str, Any]:
         return {
@@ -142,6 +148,11 @@ class GFPGAN(Engine):
 
     async def restore(self, src: Path, dst: Path) -> None:
         await self.get_model()
+        _log.debug(
+            "gfpgan restore start",
+            extra={"engine_slug": self.slug, "src": str(src), "dst": str(dst)},
+        )
+        started = time.monotonic()
         from fastapi import HTTPException
         try:
             await asyncio.to_thread(self._restore_sync, src, dst)
@@ -151,6 +162,15 @@ class GFPGAN(Engine):
             _log.exception("gfpgan restore failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"gfpgan restore failed: {e}") from e
         self._touch()
+        _log.debug(
+            "gfpgan restore complete",
+            extra={
+                "engine_slug": self.slug,
+                "dst": str(dst),
+                "size": dst.stat().st_size if dst.exists() else 0,
+                "wall_secs": round(time.monotonic() - started, 3),
+            },
+        )
 
     def _restore_sync(self, src: Path, dst: Path) -> None:
         """Frame-by-frame restore. Preserves the source audio track."""

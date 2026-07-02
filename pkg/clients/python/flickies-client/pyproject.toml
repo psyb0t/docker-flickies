@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flickies-client"
-version = "0.2.0"
+version = "0.3.1"
 description = "A client library for accessing flickies"
 authors = []
 readme = "README.md"

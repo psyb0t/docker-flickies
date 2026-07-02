@@ -128,3 +128,5 @@ node_modules/
 tests/integration/.fixtures/*
 !tests/integration/.fixtures/.gitkeep
 .telemetry/
+.refactor/
+.anustimes/

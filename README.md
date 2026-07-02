@@ -70,6 +70,8 @@ Structured JSON to **both** stderr AND a rotating file at `FLICKIES_LOG_FILE` (d
 
 Inbound `X-Request-Id` (UUID v4 OR ULID; garbage → server mints fresh) threads onto the logging scope via `ContextVar` + echoes back on the response. Outbound httpx fetches forward `X-Request-Id` + `X-Trace-Id` so the next hop's logs correlate. Sensitive keys (`authorization`, `cookie`, `*token*`, `*secret*`, `hf_*`, `sk-ant-*`) get `[REDACTED]` automatically at format time.
 
+Default level is `INFO`; set `FLICKIES_LOG_LEVEL=DEBUG` for reconstruction-grade tracing: every ffmpeg/ffprobe command + result, each transform's decision (e.g. trim `stream_copy` vs `precise_reencode`) + output size, engine inference timing (`wall_secs`), URL fetch/upload byte counts, and job lifecycle. Logged URLs are stripped of their query string so presigned credentials never reach the logs.
+
 ## MCP
 
 Eleven tools at `/v1/mcp` via streamable-HTTP JSON-RPC: `list_engines`, `info`, `lipsync`, `restore`, `transcode`, `trim`, `concat`, `scale`, `mux_audio`, `extract_audio`, `thumbnail_grid`. Point a function-calling LLM at it (LibreChat, Cursor, Claude desktop with the MCP connector) and it drives the pipeline.

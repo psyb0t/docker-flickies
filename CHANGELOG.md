@@ -4,6 +4,42 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.1] - 2026-07-02
+
+Observability pass + a real memory-leak fix on engine unload. No API surface
+changes; fully backwards-compatible.
+
+### Fixed
+
+- **Engine unload now actually frees GPU/CPU memory.** `unload()` in all three
+  engines (`wav2lip`, `gfpgan`, `latentsync`) previously did `del model` +
+  `torch.cuda.empty_cache()` with no `gc.collect()`. Since PyTorch model graphs
+  (and the wrapped `FaceAlignment` detector / `GFPGANer` / diffusers pipeline)
+  hold reference cycles, refcount `del` never freed them and `empty_cache()`
+  (which only returns already-freed blocks to the driver) was a no-op — so
+  weights stayed resident after eviction. Now: drop all refs → `gc.collect()`
+  → `torch.cuda.empty_cache()`, in that order. Applies to all three unload
+  triggers: idle sweep (`FLICKIES_IDLE_UNLOAD_SECS`), `DELETE /v1/engines/{slug}`,
+  and hot-swap eviction. `latentsync` also now clears its retained config.
+
+### Added
+
+- **Reconstruction-grade DEBUG logging across the operational path** (opt-in via
+  `FLICKIES_LOG_LEVEL=DEBUG`; default stays `INFO`). Every ffmpeg/ffprobe
+  invocation logs its full command + completion; `trim`/`concat`/`transcode` log
+  the chosen path (`stream_copy` vs `precise_reencode` vs gif/standard) as a
+  `reason` field; engine inference logs entry + output size + `wall_secs`; URL
+  fetch/upload logs byte counts; async jobs log submit/start/cancel with reason;
+  the HTTP exception handlers now log rejections (4xx WARN / 5xx ERROR) with
+  method, path, status, and reason.
+
+### Security
+
+- **Logged URLs are query-stripped.** `file_url` / `output_url` can be presigned
+  (credentials in the query string, e.g. `X-Amz-Signature`); a new
+  `loggable_url()` helper drops the query before logging so presigned grants
+  never reach the log files. Host + path are retained for reconstruction.
+
 ## [0.3.0] - 2026-06-29
 
 Frame-accurate `precise` flag on the ffmpeg-ops `trim` + `concat` endpoints.
@@ -60,8 +96,7 @@ All ML pipelines remain live-verified on RTX 3060 12 GB.
 
 ### Added
 
-- **Structured JSON logging** (`src/flickies/logging_config.py`) per
-  `~/.claude/rules/06-logging.md`:
+- **Structured JSON logging** (`src/flickies/logging_config.py`):
   - `RedactingJsonFormatter` (subclass of `python-json-logger`) — recursive
     key + value redaction of `password|token|secret|api[_-]?key|authorization|cookie|set-cookie|hf_*|sk-ant-*|sk-*` at format time. Keys that match map to `[REDACTED]`; string values that match (e.g. `-----BEGIN PRIVATE KEY-----`) are also redacted.
   - ContextVar-backed `with_scope(**kv)` / `get_scope()` / `ScopeFilter`. Every
@@ -74,8 +109,7 @@ All ML pipelines remain live-verified on RTX 3060 12 GB.
     to use the same handlers — no ANSI-colour plain-text leak.
   - Drops noisy stdlib fields (`taskName`, `color_message`).
 - **Audited every `_log.X("…%s", v)` call site** in the codebase (~30 sites)
-  and rewrote to `extra={…}` structured fields per
-  `~/.claude/rule-details/python/logging.md`. Includes a `reason` enum-style
+  and rewrote to `extra={…}` structured fields. Includes a `reason` enum-style
   field on every filter / fall-back branch.
 - **Trace + Request ID hardening** in `RequestIdMiddleware`:
   - Validates inbound `X-Request-Id` shape (UUID v4 OR ULID, max 64 chars,

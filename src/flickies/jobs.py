@@ -65,10 +65,15 @@ class JobQueue:
         job = Job(job_id=str(uuid.uuid4()))
         async with self._lock:
             self._jobs[job.job_id] = job
+        _log.debug(
+            "job submitted",
+            extra={"job_id": job.job_id, "has_webhook": bool(webhook_url)},
+        )
 
         async def _runner() -> None:
             job.started_at = time.time()
             job.status = "running"
+            _log.debug("job started", extra={"job_id": job.job_id})
             try:
                 result = await coro_factory()
             except Exception as e:  # noqa: BLE001
@@ -103,10 +108,16 @@ class JobQueue:
         async with self._lock:
             job = self._jobs.get(job_id)
             if job is None or job.task is None:
+                _log.debug("job cancel skipped", extra={"job_id": job_id, "reason": "not_found"})
                 return False
             if job.status in ("complete", "failed", "cancelled"):
+                _log.debug(
+                    "job cancel skipped",
+                    extra={"job_id": job_id, "status": job.status, "reason": "already_terminal"},
+                )
                 return False
             job.task.cancel()
             job.status = "cancelled"
             job.finished_at = time.time()
+            _log.info("job cancelled", extra={"job_id": job_id})
             return True

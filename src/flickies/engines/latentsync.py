@@ -22,9 +22,11 @@ inference script's behaviour is preserved.
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -165,16 +167,22 @@ class LatentSync(Engine):
     async def unload(self) -> None:
         if self._pipeline is None:
             return
+        # Null every ref (pipeline holds UNet + VAE + audio encoder — the
+        # biggest VRAM footprint of any engine here) THEN gc.collect().
+        # The diffusers pipeline graph has reference cycles that refcount del
+        # won't free; empty_cache() only returns already-freed blocks, so the
+        # collect must run first. Order: null refs → collect → empty_cache.
+        self._pipeline = None
+        self._config = None
+        self._device = None
+        gc.collect()
         try:
             import torch
-            del self._pipeline
-            self._pipeline = None
-            self._device = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            _log.info("latentsync unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
+        _log.info("latentsync unloaded", extra={"engine_slug": self.slug})
 
     async def health(self) -> dict[str, Any]:
         return {
@@ -187,6 +195,11 @@ class LatentSync(Engine):
 
     async def lipsync(self, face: Path, audio: Path, dst: Path) -> None:
         await self.get_model()
+        _log.debug(
+            "latentsync inference start",
+            extra={"engine_slug": self.slug, "face": str(face), "audio": str(audio), "dst": str(dst)},
+        )
+        started = time.monotonic()
         from fastapi import HTTPException
         try:
             await asyncio.to_thread(self._lipsync_sync, face, audio, dst)
@@ -196,6 +209,15 @@ class LatentSync(Engine):
             _log.exception("latentsync inference failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"latentsync inference failed: {e}") from e
         self._touch()
+        _log.debug(
+            "latentsync inference complete",
+            extra={
+                "engine_slug": self.slug,
+                "dst": str(dst),
+                "size": dst.stat().st_size if dst.exists() else 0,
+                "wall_secs": round(time.monotonic() - started, 3),
+            },
+        )
 
     def _lipsync_sync(self, face: Path, audio: Path, dst: Path) -> None:
         import torch

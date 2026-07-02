@@ -10,6 +10,7 @@ no localhost / private IPs unless FLICKIES_ALLOW_PRIVATE_FETCH=1.
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import socket
 import tempfile
@@ -25,7 +26,24 @@ from flickies.errors import (
 )
 
 
+_log = logging.getLogger("flickies.fetch")
+
+
 _FETCH_TIMEOUT = float(os.environ.get("FLICKIES_FETCH_TIMEOUT_SECS", "300"))
+
+
+def loggable_url(url: str) -> str:
+    """Scheme://host/path with the query string dropped — safe to log.
+
+    Presigned URLs carry credentials in the query string (`X-Amz-Signature`,
+    `?token=`, etc.) that the log redactor's keyword pattern doesn't reliably
+    catch. Strip the query entirely; host + path is enough to reconstruct
+    which object was fetched without leaking the grant.
+    """
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+
+
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
@@ -68,6 +86,10 @@ def _validate_url(url: str) -> None:
         except ValueError:
             continue
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+            _log.warning(
+                "url fetch refused: private/loopback IP",
+                extra={"host": parsed.hostname, "addr": addr, "reason": "ssrf_private_ip"},
+            )
             raise http_error(
                 400,
                 CODE_BAD_REQUEST,
@@ -86,10 +108,16 @@ async def fetch_to_temp(url: str, *, suffix: str = "") -> Path:
     fd, tmp = tempfile.mkstemp(prefix="flickies-in-", suffix=suffix)
     os.close(fd)
     p = Path(tmp)
+    _log.debug("url fetch start", extra={"url": loggable_url(url), "dst": str(p), "timeout_secs": _FETCH_TIMEOUT})
+    total = 0
     try:
         async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT, follow_redirects=True) as client:
             async with client.stream("GET", url, headers=_scope_headers()) as resp:
                 if resp.status_code >= 400:
+                    _log.warning(
+                        "url fetch failed: upstream error",
+                        extra={"url": loggable_url(url), "status": resp.status_code, "reason": "upstream_non_2xx"},
+                    )
                     raise http_error(
                         502,
                         CODE_UPSTREAM_FETCH_FAILED,
@@ -97,13 +125,19 @@ async def fetch_to_temp(url: str, *, suffix: str = "") -> Path:
                     )
                 with p.open("wb") as f:
                     async for chunk in resp.aiter_bytes():
+                        total += len(chunk)
                         f.write(chunk)
     except httpx.HTTPError as e:
+        _log.warning(
+            "url fetch failed: transport error",
+            extra={"url": loggable_url(url), "err": str(e), "reason": "transport_error"},
+        )
         try:
             p.unlink()
         except OSError:
             pass
         raise http_error(502, CODE_UPSTREAM_FETCH_FAILED, str(e)) from e
+    _log.debug("url fetch complete", extra={"url": loggable_url(url), "dst": str(p), "bytes": total})
     return p
 
 
@@ -111,17 +145,27 @@ async def put_file(src: Path, url: str) -> int:
     """Stream a local file to a presigned PUT URL. Returns bytes uploaded."""
     _validate_url(url)
     size = src.stat().st_size
+    _log.debug("url upload start", extra={"url": loggable_url(url), "src": str(src), "bytes": size})
     with src.open("rb") as f:
         try:
             async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT) as client:
                 headers = {"Content-Length": str(size), **_scope_headers()}
                 resp = await client.put(url, content=f, headers=headers)
                 if resp.status_code >= 400:
+                    _log.warning(
+                        "url upload failed: upstream error",
+                        extra={"url": loggable_url(url), "status": resp.status_code, "reason": "upstream_non_2xx"},
+                    )
                     raise http_error(
                         502,
                         CODE_UPSTREAM_FETCH_FAILED,
                         f"upstream PUT {url} returned {resp.status_code}",
                     )
         except httpx.HTTPError as e:
+            _log.warning(
+                "url upload failed: transport error",
+                extra={"url": loggable_url(url), "err": str(e), "reason": "transport_error"},
+            )
             raise http_error(502, CODE_UPSTREAM_FETCH_FAILED, str(e)) from e
+    _log.debug("url upload complete", extra={"url": loggable_url(url), "bytes": size})
     return size

@@ -18,10 +18,12 @@ FLICKIES_DATA_DIR/models/wav2lip/s3fd-619a316812.pth.
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -186,18 +188,23 @@ class Wav2Lip(Engine):
     async def unload(self) -> None:
         if self._model is None:
             return
+        # Drop every ref to the model graph FIRST, then gc.collect(). PyTorch
+        # nn.Module graphs (and the FaceAlignment detector) hold reference
+        # cycles, so refcount alone never frees them — only the cyclic
+        # collector does. torch.cuda.empty_cache() only returns
+        # already-freed blocks to the driver, so it's a no-op unless the
+        # collect ran first. Order matters: null refs → collect → empty_cache.
+        self._model = None
+        self._detector = None
+        self._device = None
+        gc.collect()
         try:
             import torch
-            del self._model
-            del self._detector
-            self._model = None
-            self._detector = None
-            if self._device == "cuda" and torch.cuda.is_available():
+            if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            self._device = None
-            _log.info("wav2lip unloaded", extra={"engine_slug": self.slug})
         except ImportError:
             pass
+        _log.info("wav2lip unloaded", extra={"engine_slug": self.slug})
 
     async def health(self) -> dict[str, Any]:
         return {
@@ -211,6 +218,11 @@ class Wav2Lip(Engine):
     async def lipsync(self, face: Path, audio: Path, dst: Path) -> None:
         require_noncommercial_optin(self.slug)
         await self.get_model()
+        _log.debug(
+            "wav2lip inference start",
+            extra={"engine_slug": self.slug, "face": str(face), "audio": str(audio), "dst": str(dst)},
+        )
+        started = time.monotonic()
         from fastapi import HTTPException
         try:
             await asyncio.to_thread(self._lipsync_sync, face, audio, dst)
@@ -220,6 +232,15 @@ class Wav2Lip(Engine):
             _log.exception("wav2lip inference failed", extra={"engine_slug": self.slug})
             raise http_error(500, CODE_INTERNAL, f"wav2lip inference failed: {e}") from e
         self._touch()
+        _log.debug(
+            "wav2lip inference complete",
+            extra={
+                "engine_slug": self.slug,
+                "dst": str(dst),
+                "size": dst.stat().st_size if dst.exists() else 0,
+                "wall_secs": round(time.monotonic() - started, 3),
+            },
+        )
 
     # ── synchronous core ───────────────────────────────────────────────
     def _lipsync_sync(self, face: Path, audio: Path, dst: Path) -> None:

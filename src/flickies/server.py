@@ -51,7 +51,7 @@ from flickies.files import (
     save_stream,
     stream_file,
 )
-from flickies.fetch import fetch_to_temp, put_file
+from flickies.fetch import fetch_to_temp, loggable_url, put_file
 from flickies.jobs import JobQueue
 from flickies.middleware import (
     IdempotencyMiddleware,
@@ -138,6 +138,10 @@ async def _finalise_output(
         dst = resolve_safe(files_dir(cfg.data_dir), output_path)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(tmp), str(dst))
+        _log.debug(
+            "output finalised",
+            extra={"mode": "path", "path": output_path, "size": size},
+        )
         return {"path": output_path, "size": size}
     if output_url:
         try:
@@ -147,6 +151,10 @@ async def _finalise_output(
                 tmp.unlink()
             except OSError:
                 pass
+        _log.debug(
+            "output finalised",
+            extra={"mode": "url", "url": loggable_url(output_url), "size": size},
+        )
         return {"url": output_url, "size": size}
     # Async-staged path: caller passed neither; the route handler picked a
     # jobs/<id>.<ext> path before calling. Treat tmp as the final result;
@@ -215,7 +223,7 @@ def build_app() -> FastAPI:
 
     # ── error envelope shaping ─────────────────────────────────────────
     @app.exception_handler(StarletteHTTPException)
-    async def _http_exc(_req: Request, exc: StarletteHTTPException) -> JSONResponse:
+    async def _http_exc(req: Request, exc: StarletteHTTPException) -> JSONResponse:
         detail = exc.detail
         if isinstance(detail, dict) and "code" in detail and "message" in detail:
             payload = detail
@@ -224,10 +232,32 @@ def build_app() -> FastAPI:
                 "code": _status_to_code(exc.status_code),
                 "message": str(detail),
             }
+        # 5xx = our fault (error); 4xx = client rejection (warn) so probes /
+        # bad requests are auditable without being alarming.
+        log_extra = {
+            "method": req.method,
+            "path": req.url.path,
+            "status": exc.status_code,
+            "code": payload.get("code"),
+            "reason": "server_error" if exc.status_code >= 500 else "client_error",
+        }
+        if exc.status_code >= 500:
+            _log.error("request failed", extra=log_extra)
+        else:
+            _log.warning("request rejected", extra=log_extra)
         return JSONResponse(status_code=exc.status_code, content=payload)
 
     @app.exception_handler(NonCommercialOptInRequired)
-    async def _nc_exc(_req: Request, exc: NonCommercialOptInRequired) -> JSONResponse:
+    async def _nc_exc(req: Request, exc: NonCommercialOptInRequired) -> JSONResponse:
+        _log.warning(
+            "request rejected: noncommercial gate",
+            extra={
+                "method": req.method,
+                "path": req.url.path,
+                "status": 403,
+                "reason": "noncommercial_gate_refused",
+            },
+        )
         return JSONResponse(
             status_code=403,
             content={
@@ -237,7 +267,17 @@ def build_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation_exc(_req: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _validation_exc(req: Request, exc: RequestValidationError) -> JSONResponse:
+        _log.warning(
+            "request rejected: validation failed",
+            extra={
+                "method": req.method,
+                "path": req.url.path,
+                "status": 422,
+                "error_count": len(exc.errors()),
+                "reason": "validation_failed",
+            },
+        )
         return JSONResponse(
             status_code=422,
             content={
@@ -356,7 +396,12 @@ def build_app() -> FastAPI:
                     dst = resolve_safe(files_dir(cfg.data_dir), job_path)
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(str(tmp), str(dst))
-                    return {"path": job_path, "size": dst.stat().st_size}
+                    out_size = dst.stat().st_size
+                    _log.debug(
+                        "output finalised",
+                        extra={"mode": "async_staged", "path": job_path, "size": out_size},
+                    )
+                    return {"path": job_path, "size": out_size}
                 finally:
                     if tmp.exists():
                         try:
