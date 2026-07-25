@@ -21,5 +21,19 @@
       "required": false,
       "description": "Bearer token, only if the flickies server was started with FLICKIES_AUTH_TOKEN set."
     }
+  },
+  "configSchema": {
+    "type": "object",
+    "required": ["url"],
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "Base URL of your running flickies server, e.g. http://localhost:8000 (the bridge appends /v1/mcp)."
+      },
+      "authToken": {
+        "type": "string",
+        "description": "Bearer token, only if the flickies server was started with FLICKIES_AUTH_TOKEN set."
+      }
+    }
   }
 }
