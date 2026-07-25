@@ -1,0 +1,25 @@
+{
+  "name": "@psyb0t/flickies",
+  "id": "@psyb0t/flickies",
+  "version": "0.3.3",
+  "type": "code-plugin",
+  "summary": "Wire an OpenClaw agent to a self-hosted flickies video API over MCP — lipsync, face restore, and ffmpeg video ops as tools.",
+  "description": "A thin stdio<->HTTP bridge that connects an MCP client (OpenClaw, Claude, Cursor, Codex, ...) to a running flickies instance's MCP endpoint (/v1/mcp), exposing its 11 tools: lipsync a face to audio, restore faces (GFPGAN), run ffmpeg ops (trim / concat / transcode / scale / mux_audio / extract_audio / thumbnail_grid), and probe metadata (ffprobe). flickies is self-hosted — you run the server yourself and point this bridge at it. See https://github.com/psyb0t/docker-flickies.",
+  "extensions": ["./bin/cli.js"],
+  "compat": {
+    "pluginApi": ">=2026.3.24-beta.2"
+  },
+  "build": {
+    "openclawVersion": "2026.3.24-beta.2"
+  },
+  "environment": {
+    "FLICKIES_URL": {
+      "required": true,
+      "description": "Base URL of your running flickies server, e.g. http://localhost:8000 (the bridge appends /v1/mcp)."
+    },
+    "FLICKIES_AUTH_TOKEN": {
+      "required": false,
+      "description": "Bearer token, only if the flickies server was started with FLICKIES_AUTH_TOKEN set."
+    }
+  }
+}
