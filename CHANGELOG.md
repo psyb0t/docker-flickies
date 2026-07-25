@@ -4,6 +4,14 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.6] - 2026-07-25
+
+Skill security hardening for the ClawHub publish. No API or service change.
+
+### Changed
+
+- **SKILL.md / references/setup.md**: flagged the two destructive control-plane endpoints (`DELETE /v1/engines/{slug}`, `DELETE /v1/files/{path}`) as destructive/admin-ish with a confirm-before-use rule, and added a Security & safety section noting auth is off by default (`FLICKIES_AUTH_TOKEN` empty = open) and that auth gates who can call the API but not what a token holder may delete.
+
 ## [0.3.1] - 2026-07-02
 
 Observability pass + a real memory-leak fix on engine unload. No API surface

@@ -70,7 +70,7 @@ All server-side (set at `docker run` time). Everything defaults sensibly; the tw
 
 | Var | Default | What it does |
 |---|---|---|
-| `FLICKIES_AUTH_TOKEN` | (empty = no auth) | Bearer token required on every route except `/healthz`. Empty/unset = wide open. When set, `Authorization: Bearer <token>` is required on every HTTP request AND every MCP call. |
+| `FLICKIES_AUTH_TOKEN` | (empty = no auth) | Bearer token required on every route except `/healthz`. Empty/unset = wide open. When set, `Authorization: Bearer <token>` is required on every HTTP request AND every MCP call. **Set this for any deployment beyond localhost-only** — with it unset, the destructive control-plane endpoints (`DELETE /v1/engines/{slug}`, `DELETE /v1/files/{path}`) are reachable by anyone who can hit the port. Auth gates *who* can call the API, not *what* a token holder may delete — don't expose those two endpoints to untrusted callers even with auth on. See [Security & safety](../SKILL.md#security--safety) in the skill doc. |
 | `FLICKIES_ENABLE_NONCOMMERCIAL` | (unset = refuse) | Set to `1` / `true` / `yes` / `on` to allow the `wav2lip` / `wav2lip-gan` engines to load (LRS2 non-commercial training data). Unset → those slugs return 403 `NONCOMMERCIAL_GATE_REFUSED`. |
 | `FLICKIES_DEVICE` | `auto` | `auto` picks `cuda` if available else `cpu`. Also `cpu` / `cuda`. |
 | `FLICKIES_DATA_DIR` | `/data` | Base data dir. Staged files → `<data>/uploads` + FILES_DIR; model snapshots → `<data>/hf` cache; async job outputs → `<data>/jobs/`. Bind-mount to persist across restarts. |
@@ -182,8 +182,10 @@ Inspect + control resident engines over the API:
 
 ```bash
 curl -s http://localhost:8000/v1/engines | jq              # list + load state + idle age
-curl -s -X DELETE http://localhost:8000/v1/engines/latentsync-1.5   # evict from VRAM (204)
+curl -s -X DELETE http://localhost:8000/v1/engines/latentsync-1.5   # evict from VRAM (204) — DESTRUCTIVE, confirm before use, see Security & safety
 ```
+
+`DELETE /v1/engines/{slug}` and `DELETE /v1/files/{path}` are destructive control-plane/admin-ish actions, not data-producing endpoints — confirm before invoking either, and don't expose them to untrusted agents/callers regardless of auth state.
 
 ## OpenClaw / ClawHub Config
 
