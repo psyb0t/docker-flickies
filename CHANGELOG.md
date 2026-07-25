@@ -4,6 +4,15 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.7] - 2026-07-25
+
+Skill security hardening — clears the ClawHub SkillSpector DO_NOT_INSTALL rating. Docs only, no API/service change.
+
+### Changed
+
+- Declared a `permissions:` capability block (network / shell / filesystem incl. the destructive file + engine deletes) in the skill frontmatter.
+- Strengthened the destructive-endpoint guardrail: an agent must never call `DELETE /v1/files/{path}` or `DELETE /v1/engines/{slug}` on its own initiative — only when the user explicitly asked to delete that specific staged file / evict that specific engine, scoped to the current workflow; require `FLICKIES_AUTH_TOKEN` by default.
+
 ## [0.3.6] - 2026-07-25
 
 Skill security hardening for the ClawHub publish. No API or service change.

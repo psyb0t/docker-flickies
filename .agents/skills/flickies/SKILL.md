@@ -3,6 +3,10 @@ name: flickies
 description: Self-hosted video REST + MCP API. POST JSON, get a video back. Lipsync (LatentSync 1.5 + Wav2Lip/Wav2Lip-GAN) at /v1/video/lipsync, GFPGAN face restore at /v1/video/restore, pure-ffmpeg ops (trim, concat, transcode incl. gif + fps + codec, scale, mux_audio, extract_audio, thumbnail_grid) under /v1/video/*, and ffprobe metadata at /v1/video/info. file_path (staged) xor file_url in; output_path xor output_url out. Fire-and-forget async jobs (async_job=true → 202 → poll /v1/jobs/{id}) with HMAC-signed webhooks. 11 MCP tools at /v1/mcp. Bearer-token auth. CPU + CUDA images. Use when the user wants to lipsync a face to audio, restore faces in footage, trim/concat/transcode/scale/mux/extract/thumbnail video, probe a video's metadata, or drive any of that from an LLM over MCP.
 homepage: https://github.com/psyb0t/docker-flickies
 user-invocable: true
+permissions:
+  - network: outbound HTTP to the configured FLICKIES_URL, plus server-side fetch of file_url, delivery to output_url, and HMAC-signed webhook callbacks
+  - shell: the documented examples invoke local curl / docker
+  - filesystem: reads/writes/DELETES server-side staged files via PUT/GET/DELETE /v1/files/{path}, and evicts engines via DELETE /v1/engines/{slug}
 metadata:
   { "openclaw": { "emoji": "🎬", "primaryEnv": "FLICKIES_URL", "requires": { "bins": ["docker", "curl"] } } }
 ---
@@ -26,7 +30,8 @@ For installation, configuration, and container setup, see [references/setup.md](
 - **Auth by default is off** — `FLICKIES_AUTH_TOKEN` is empty/unset out of the box, meaning the API (including the destructive endpoints below) is wide open to anyone who can reach the port. Set `FLICKIES_AUTH_TOKEN` on the server for any deployment beyond localhost-only, and always pass `Authorization: Bearer <token>` once it's set.
 - **Two destructive/admin-ish endpoints** — `DELETE /v1/engines/{slug}` (evicts a resident engine from VRAM) and `DELETE /v1/files/{path}` (deletes a staged file, irreversible). Both are control-plane actions, not data-producing ones.
   - Treat them as **destructive**: confirm with the user/operator before invoking either one.
-  - Do **not** expose them to untrusted agents/callers — an untrusted caller with access to these can grief a shared instance (evict another user's warm model mid-use, or delete another user's staged files) even with auth on, since auth only gates *who* can call the API, not *what* a legitimate token holder is allowed to delete.
+  - **Agent guardrail** — never call `DELETE /v1/files/{path}` or `DELETE /v1/engines/{slug}` on your own initiative. Call them ONLY when the user explicitly asked to delete that specific staged file or evict that specific engine, and only against paths/engines created in the current workflow. Never delete or evict resources you didn't create, and never enumerate-then-delete another caller's files.
+  - Do **not** expose them to untrusted agents/callers — an untrusted caller with access to these can grief a shared instance (evict another user's warm model mid-use, or delete another user's staged files) even with auth on, since auth only gates *who* can call the API, not *what* a legitimate token holder is allowed to delete. Require `FLICKIES_AUTH_TOKEN` by default and keep these destructive endpoints off any untrusted-agent-reachable surface.
 
 ## When To Use
 
