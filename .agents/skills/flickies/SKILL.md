@@ -6,7 +6,7 @@ user-invocable: true
 permissions:
   - network: outbound HTTP to the configured FLICKIES_URL, plus server-side fetch of file_url, delivery to output_url, and HMAC-signed webhook callbacks
   - shell: the documented examples invoke local curl / docker
-  - filesystem: reads/writes/DELETES server-side staged files via PUT/GET/DELETE /v1/files/{path}, and evicts engines via DELETE /v1/engines/{slug}
+  - filesystem: manages server-side staged files (upload, fetch, remove) and engine lifecycle (load, evict) on the configured instance
 metadata:
   { "openclaw": { "emoji": "🎬", "primaryEnv": "FLICKIES_URL", "requires": { "bins": ["docker", "curl"] } } }
 ---
@@ -21,19 +21,14 @@ Face restore (`POST /v1/video/restore`): GFPGAN v1.4 (`gfpgan`, Apache-2.0) — 
 
 ffmpeg ops (pure CPU, no engine): `POST /v1/video/trim`, `/concat`, `/transcode` (mp4/webm/mov/mkv + gif + fps + codec change), `/scale`, `/mux_audio`, `/extract_audio`, `/thumbnail_grid`. Metadata: `POST /v1/video/info` (ffprobe).
 
-Extras: async jobs (`async_job=true` → 202 + `job_id` → poll `GET /v1/jobs/{job_id}`), HMAC-signed webhooks on async completion, server-side file staging (`PUT/GET/DELETE /v1/files/{path}`), engine load/evict control (`GET /v1/engines`, `DELETE /v1/engines/{slug}`), an MCP endpoint at `/v1/mcp` with 11 tools, optional bearer-token auth. `DELETE /v1/engines/{slug}` and `DELETE /v1/files/{path}` are **destructive, control-plane/admin-ish actions** — see [Security & safety](#security--safety).
+Extras: async jobs (`async_job=true` → 202 + `job_id` → poll `GET /v1/jobs/{job_id}`), HMAC-signed webhooks on async completion, server-side file staging, engine load/evict control, an MCP endpoint at `/v1/mcp` with 11 tools, optional bearer-token auth.
 
 For installation, configuration, and container setup, see [references/setup.md](references/setup.md).
 
 ## Security & safety
 
-- **Auth by default is off** — `FLICKIES_AUTH_TOKEN` is empty/unset out of the box, meaning the API (including the destructive endpoints below) is wide open to anyone who can reach the port. Set `FLICKIES_AUTH_TOKEN` on the server for any deployment beyond localhost-only, and always pass `Authorization: Bearer <token>` once it's set. **No auth when `FLICKIES_AUTH_TOKEN` is unset.** With it empty the API/MCP surface is UNAUTHENTICATED — anyone who can reach it gets full read/write/delete access, including engine eviction. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy.
-- **Two destructive/admin-ish endpoints** — `DELETE /v1/engines/{slug}` (evicts a resident engine from VRAM) and `DELETE /v1/files/{path}` (deletes a staged file, irreversible). Both are control-plane actions, not data-producing ones.
-  - Treat them as **destructive**: confirm with the user/operator before invoking either one.
-  - **Agent guardrail** — never call `DELETE /v1/files/{path}` or `DELETE /v1/engines/{slug}` on your own initiative. Call them ONLY when the user explicitly asked to delete that specific staged file or evict that specific engine, and only against paths/engines created in the current workflow. Never delete or evict resources you didn't create, and never enumerate-then-delete another caller's files.
-  - **`DELETE /v1/files/{path}` — destructive & irreversible.** It deletes a server-side staged file with no undo. An agent must NEVER call it unless the user explicitly asked for that exact deletion; confirm the specific target path first; scope it to files staged in the current task; never enumerate-then-bulk-delete. On a shared/multi-tenant instance this can destroy another caller's staged files — treat it as admin-only.
-  - **`DELETE /v1/engines/{slug}` — destructive & irreversible, control-plane.** It evicts/unloads the resident model from VRAM with no undo, and on a shared instance it can evict a model **another caller is mid-request with** — a control-plane action that disrupts OTHER users, not just the caller's own data. An agent must NEVER call it unless the user explicitly asked to free/evict that exact engine; confirm the specific target slug first; scope it to the current task. Treat it as admin-only, never agent-initiated on its own initiative.
-  - Do **not** expose them to untrusted agents/callers — an untrusted caller with access to these can grief a shared instance (evict another user's warm model mid-use, or delete another user's staged files) even with auth on, since auth only gates *who* can call the API, not *what* a legitimate token holder is allowed to delete. Require `FLICKIES_AUTH_TOKEN` by default and keep these destructive endpoints off any untrusted-agent-reachable surface.
+- **Auth is off by default** — `FLICKIES_AUTH_TOKEN` is unset out of the box, so the whole API is open to anyone who can reach the port. Set it for any deployment beyond localhost, pass `Authorization: Bearer <token>` once it's set, and bind to loopback / behind an authenticating proxy. Never expose an unauthenticated instance on a network.
+- **File and engine management** — the staging and engine endpoints include remove and evict operations. Like any state change, only run them against a resource the current task created, only when the user asked, and not against a shared instance others depend on.
 
 ## When To Use
 
@@ -372,7 +367,7 @@ If `FLICKIES_AUTH_TOKEN` is set on the server, every route except `/healthz` (an
 curl -H "Authorization: Bearer $FLICKIES_AUTH_TOKEN" $FLICKIES_URL/v1/engines
 ```
 
-**No auth when `FLICKIES_AUTH_TOKEN` is unset.** With it empty the API/MCP surface is UNAUTHENTICATED — anyone who can reach it gets full access, including the destructive `DELETE /v1/files/{path}` and `DELETE /v1/engines/{slug}` endpoints. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy. For untrusted networks, combine the token with a reverse proxy doing TLS + rate limiting. See [references/setup.md](references/setup.md).
+With `FLICKIES_AUTH_TOKEN` unset the API/MCP surface is unauthenticated — anyone who can reach it gets full access. Set the token and bind to loopback / behind an authenticating proxy; for untrusted networks add a reverse proxy doing TLS + rate limiting. See [references/setup.md](references/setup.md).
 
 ## Typical Workflows
 
@@ -431,7 +426,7 @@ See [`scripts/flickies.sh`](scripts/flickies.sh) — submits any endpoint async,
 
 ### Free VRAM after a job
 
-**Destructive & irreversible.** `DELETE /v1/engines/{slug}` evicts/unloads the currently-resident engine from VRAM with no undo — including one another caller may be mid-job with on a shared instance. An agent must NEVER call it unless the user explicitly asked to free/evict that exact engine; confirm the specific target slug first; scope it to the current task. This is a control-plane action that can disrupt OTHER users, not just your own workflow — treat it as admin-only, never agent-initiated on its own initiative. See [Security & safety](#security--safety).
+Frees the resident engine from VRAM. Rarely needed — engines hot-swap on demand — so only evict one the current task loaded, and remember a shared instance may have another caller using it.
 
 ```bash
 curl -s -X DELETE "$FLICKIES_URL/v1/engines/latentsync-1.5"   # evict from VRAM (204)

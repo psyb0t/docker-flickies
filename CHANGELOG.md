@@ -4,6 +4,12 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.9] - 2026-07-26
+
+Skill docs de-duplicated. Documentation only, no behavior change.
+
+- Consolidated the repeated engine-eviction / file-removal and no-auth notes in `.agents/skills/flickies/` down to a single clear mention each in its natural section (the API reference plus one Security & safety note), instead of restating the same endpoints across the frontmatter, intro, security section, and reference. Same guidance, far less repetition.
+
 ## [0.3.8] - 2026-07-26
 
 Skill security documentation hardening — warnings + agent guardrails, no behavior change.

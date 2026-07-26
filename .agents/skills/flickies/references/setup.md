@@ -70,7 +70,7 @@ All server-side (set at `docker run` time). Everything defaults sensibly; the tw
 
 | Var | Default | What it does |
 |---|---|---|
-| `FLICKIES_AUTH_TOKEN` | (empty = no auth) | Bearer token required on every route except `/healthz`. Empty/unset = wide open. When set, `Authorization: Bearer <token>` is required on every HTTP request AND every MCP call. **No auth when `FLICKIES_AUTH_TOKEN` is unset.** With it empty the API/MCP surface is UNAUTHENTICATED — anyone who can reach it gets full read/write/delete access. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy. **Set this for any deployment beyond localhost-only** — with it unset, the destructive control-plane endpoints (`DELETE /v1/engines/{slug}`, `DELETE /v1/files/{path}`) are reachable by anyone who can hit the port. Auth gates *who* can call the API, not *what* a token holder may delete — don't expose those two endpoints to untrusted callers even with auth on. See [Security & safety](../SKILL.md#security--safety) in the skill doc. |
+| `FLICKIES_AUTH_TOKEN` | (empty = no auth) | Bearer token required on every route except `/healthz`. Empty/unset = wide open: the API/MCP surface is unauthenticated and anyone who can reach the port gets full access. When set, `Authorization: Bearer <token>` is required on every HTTP request and MCP call. Set it for any deployment beyond localhost, and bind to loopback / behind an authenticating proxy. See [Security & safety](../SKILL.md#security--safety) in the skill doc. |
 | `FLICKIES_ENABLE_NONCOMMERCIAL` | (unset = refuse) | Set to `1` / `true` / `yes` / `on` to allow the `wav2lip` / `wav2lip-gan` engines to load (LRS2 non-commercial training data). Unset → those slugs return 403 `NONCOMMERCIAL_GATE_REFUSED`. |
 | `FLICKIES_DEVICE` | `auto` | `auto` picks `cuda` if available else `cpu`. Also `cpu` / `cuda`. |
 | `FLICKIES_DATA_DIR` | `/data` | Base data dir. Staged files → `<data>/uploads` + FILES_DIR; model snapshots → `<data>/hf` cache; async job outputs → `<data>/jobs/`. Bind-mount to persist across restarts. |
@@ -182,14 +182,10 @@ Inspect + control resident engines over the API:
 
 ```bash
 curl -s http://localhost:8000/v1/engines | jq              # list + load state + idle age
-curl -s -X DELETE http://localhost:8000/v1/engines/latentsync-1.5   # evict from VRAM (204) — DESTRUCTIVE, confirm before use, see Security & safety
+curl -s -X DELETE http://localhost:8000/v1/engines/latentsync-1.5   # evict a resident engine from VRAM (204)
 ```
 
-**`DELETE /v1/engines/{slug}` — destructive & irreversible, control-plane.** Evicts/unloads a resident model from VRAM with no undo. On a shared/multi-tenant instance this can disrupt OTHER users mid-request, not just the caller — treat it as admin-only, never agent-initiated without an explicit user request naming that exact slug.
-
-**`DELETE /v1/files/{path}` — destructive & irreversible.** Deletes a staged file with no undo. An agent must never call it unless the user explicitly asked for that exact deletion; confirm the specific target path first; never enumerate-then-bulk-delete.
-
-`DELETE /v1/engines/{slug}` and `DELETE /v1/files/{path}` are destructive control-plane/admin-ish actions, not data-producing endpoints — confirm before invoking either, and don't expose them to untrusted agents/callers regardless of auth state.
+Engine eviction and staged-file removal are state-changing operations — run them only against a resource the current task created, and only when the user asked. On a shared instance, evicting an engine can interrupt another caller who is mid-request with it.
 
 ## OpenClaw / ClawHub Config
 
