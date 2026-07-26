@@ -4,6 +4,15 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.8] - 2026-07-26
+
+Skill security documentation hardening — warnings + agent guardrails, no behavior change.
+
+### Changed
+
+- Hardened the skill docs with explicit destructive-operation guardrails and auth/exfil warnings: applied the standard destructive-and-irreversible framing directly at every mention of `DELETE /v1/files/{path}` and `DELETE /v1/engines/{slug}` (not just the Security & safety summary), with extra emphasis that evicting an engine is a control-plane action that can disrupt other callers on a shared instance, not just the caller's own data.
+- Applied the same no-auth-when-unset warning for `FLICKIES_AUTH_TOKEN` at each place the token is documented (skill doc, setup reference, bearer-auth section), not only the security summary.
+
 ## [0.3.7] - 2026-07-25
 
 Skill security hardening — clears the ClawHub SkillSpector DO_NOT_INSTALL rating. Docs only, no API/service change.

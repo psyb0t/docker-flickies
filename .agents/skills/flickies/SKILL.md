@@ -27,10 +27,12 @@ For installation, configuration, and container setup, see [references/setup.md](
 
 ## Security & safety
 
-- **Auth by default is off** — `FLICKIES_AUTH_TOKEN` is empty/unset out of the box, meaning the API (including the destructive endpoints below) is wide open to anyone who can reach the port. Set `FLICKIES_AUTH_TOKEN` on the server for any deployment beyond localhost-only, and always pass `Authorization: Bearer <token>` once it's set.
+- **Auth by default is off** — `FLICKIES_AUTH_TOKEN` is empty/unset out of the box, meaning the API (including the destructive endpoints below) is wide open to anyone who can reach the port. Set `FLICKIES_AUTH_TOKEN` on the server for any deployment beyond localhost-only, and always pass `Authorization: Bearer <token>` once it's set. **No auth when `FLICKIES_AUTH_TOKEN` is unset.** With it empty the API/MCP surface is UNAUTHENTICATED — anyone who can reach it gets full read/write/delete access, including engine eviction. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy.
 - **Two destructive/admin-ish endpoints** — `DELETE /v1/engines/{slug}` (evicts a resident engine from VRAM) and `DELETE /v1/files/{path}` (deletes a staged file, irreversible). Both are control-plane actions, not data-producing ones.
   - Treat them as **destructive**: confirm with the user/operator before invoking either one.
   - **Agent guardrail** — never call `DELETE /v1/files/{path}` or `DELETE /v1/engines/{slug}` on your own initiative. Call them ONLY when the user explicitly asked to delete that specific staged file or evict that specific engine, and only against paths/engines created in the current workflow. Never delete or evict resources you didn't create, and never enumerate-then-delete another caller's files.
+  - **`DELETE /v1/files/{path}` — destructive & irreversible.** It deletes a server-side staged file with no undo. An agent must NEVER call it unless the user explicitly asked for that exact deletion; confirm the specific target path first; scope it to files staged in the current task; never enumerate-then-bulk-delete. On a shared/multi-tenant instance this can destroy another caller's staged files — treat it as admin-only.
+  - **`DELETE /v1/engines/{slug}` — destructive & irreversible, control-plane.** It evicts/unloads the resident model from VRAM with no undo, and on a shared instance it can evict a model **another caller is mid-request with** — a control-plane action that disrupts OTHER users, not just the caller's own data. An agent must NEVER call it unless the user explicitly asked to free/evict that exact engine; confirm the specific target slug first; scope it to the current task. Treat it as admin-only, never agent-initiated on its own initiative.
   - Do **not** expose them to untrusted agents/callers — an untrusted caller with access to these can grief a shared instance (evict another user's warm model mid-use, or delete another user's staged files) even with auth on, since auth only gates *who* can call the API, not *what* a legitimate token holder is allowed to delete. Require `FLICKIES_AUTH_TOKEN` by default and keep these destructive endpoints off any untrusted-agent-reachable surface.
 
 ## When To Use
@@ -370,7 +372,7 @@ If `FLICKIES_AUTH_TOKEN` is set on the server, every route except `/healthz` (an
 curl -H "Authorization: Bearer $FLICKIES_AUTH_TOKEN" $FLICKIES_URL/v1/engines
 ```
 
-Unset token = wide open. For untrusted networks, combine the token with a reverse proxy doing TLS + rate limiting. See [references/setup.md](references/setup.md).
+**No auth when `FLICKIES_AUTH_TOKEN` is unset.** With it empty the API/MCP surface is UNAUTHENTICATED — anyone who can reach it gets full access, including the destructive `DELETE /v1/files/{path}` and `DELETE /v1/engines/{slug}` endpoints. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy. For untrusted networks, combine the token with a reverse proxy doing TLS + rate limiting. See [references/setup.md](references/setup.md).
 
 ## Typical Workflows
 
@@ -429,7 +431,7 @@ See [`scripts/flickies.sh`](scripts/flickies.sh) — submits any endpoint async,
 
 ### Free VRAM after a job
 
-**Destructive** — evicts whatever engine is currently resident, including one another caller may be mid-job with. Confirm before invoking; don't expose this to untrusted callers. See [Security & safety](#security--safety).
+**Destructive & irreversible.** `DELETE /v1/engines/{slug}` evicts/unloads the currently-resident engine from VRAM with no undo — including one another caller may be mid-job with on a shared instance. An agent must NEVER call it unless the user explicitly asked to free/evict that exact engine; confirm the specific target slug first; scope it to the current task. This is a control-plane action that can disrupt OTHER users, not just your own workflow — treat it as admin-only, never agent-initiated on its own initiative. See [Security & safety](#security--safety).
 
 ```bash
 curl -s -X DELETE "$FLICKIES_URL/v1/engines/latentsync-1.5"   # evict from VRAM (204)
