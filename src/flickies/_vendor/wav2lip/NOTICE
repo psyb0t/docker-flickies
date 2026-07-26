@@ -1,0 +1,25 @@
+This directory vendors source code from Rudrabha/Wav2Lip:
+
+    https://github.com/Rudrabha/Wav2Lip
+
+Wav2Lip is NOT released under an OSI-approved open source license. The
+upstream repository states, verbatim, under "License and Citation":
+
+    "This repository can only be used for personal/research/non-commercial
+    purposes. However, for commercial requests, please contact us directly
+    at rudrabha@synclabs.so or prajwal@synclabs.so. We have a turn-key
+    hosted API with new and improved lip-syncing models here:
+    https://synclabs.so/"
+
+And earlier in the same document:
+
+    "All results from this open-source code or our demo website should
+    only be used for research/academic/personal purposes only. As the
+    models are trained on the LRS2 dataset, any form of commercial use is
+    strictly prohibited. For commercial requests please contact us
+    directly!"
+
+This restriction applies to the code in this directory and to any model
+weights trained/derived from it. It does not affect the license of
+flickies' own code (WTFPL) — see the top-level LICENSE and THIRD_PARTY.md
+for the full picture.

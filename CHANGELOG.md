@@ -4,6 +4,12 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.10] - 2026-07-26
+
+Third-party license notices. Documentation only, no behavior change.
+
+- Added `THIRD_PARTY.md` documenting the licenses of bundled/vendored third-party components: LatentSync (Apache-2.0, with its re-vendored Whisper/AnimateDiff also Apache-2.0) and the standalone noncommercial Wav2Lip code under `src/flickies/_vendor/wav2lip/` (research/non-commercial only). Full license texts under `LICENSES/`, plus a `NOTICE` on the Wav2Lip vendor dir. The project's own code stays WTFPL.
+
 ## [0.3.9] - 2026-07-26
 
 Skill docs de-duplicated. Documentation only, no behavior change.
