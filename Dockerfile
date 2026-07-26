@@ -13,6 +13,9 @@
 
 FROM python:3.12-slim-bookworm AS base
 
+# MCP Registry ownership marker — required for io.github.psyb0t/flickies listing.
+LABEL io.modelcontextprotocol.server.name="io.github.psyb0t/flickies"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
