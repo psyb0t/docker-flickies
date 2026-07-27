@@ -137,6 +137,43 @@ client = Client(base_url="http://localhost:8000")
 result = post_video_lipsync.sync(client=client, body=VideoLipsyncRequest(...))
 ```
 
+## Agent integrations
+
+The [skill](.agents/skills/flickies) works in any agent that reads `.agents/skills/`, and installs natively in the clients below.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add psyb0t/agents
+claude plugin install flickies@psyb0t
+```
+
+Claude Code prompts for the flickies URL and, if auth is enabled, the token — the token is stored in your OS keychain.
+
+### Codex
+
+```bash
+codex plugin marketplace add psyb0t/agents
+```
+
+Codex also picks the skill up automatically in any repo containing `.agents/skills/`, and invokes it as `$flickies`.
+
+### OpenClaw
+
+The skill is published to ClawHub on every release:
+
+```bash
+openclaw skills install @psyb0t/flickies
+```
+
+For MCP clients that speak local stdio, the [`@psyb0t/flickies`](.agents/plugins/flickies) plugin bridges to flickies' `/v1/mcp` endpoint:
+
+```bash
+openclaw plugins install clawhub:@psyb0t/flickies
+```
+
+Then set `FLICKIES_URL` (and `FLICKIES_AUTH_TOKEN` if the server requires one).
+
 ## aigate integration
 
 Mounts in [aigate](https://github.com/psyb0t/aigate) at `/flickies/` and `/flickies-cuda/` behind the same nginx → `make run-bg` lives. `FLICKIES=1` and `FLICKIES_CUDA=1` toggle the variants.

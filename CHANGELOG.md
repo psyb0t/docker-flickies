@@ -4,6 +4,13 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.14] - 2026-07-27
+
+Agent-client distribution wiring. Documentation only, no behavior change.
+
+- Added `.agents/.claude-plugin/plugin.json` and `.agents/.codex-plugin/plugin.json`, making the existing `.agents/skills/flickies` skill installable natively as a plugin in Claude Code and Codex.
+- Added a `## Agent integrations` README section with copy-pasteable install commands for Claude Code, Codex, and OpenClaw (including the `@psyb0t/flickies` MCP-bridge plugin).
+
 ## [0.3.13] - 2026-07-27
 
 - Added a GitHub Actions CI status badge to the README.

@@ -1,0 +1,11 @@
+{
+  "name": "flickies",
+  "version": "0.3.14",
+  "description": "Self-hosted video toolkit — lipsync, face restore, and ffmpeg ops (trim, concat, transcode, scale) via REST and MCP",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/docker-flickies",
+  "repository": "https://github.com/psyb0t/docker-flickies",
+  "license": "WTFPL",
+  "keywords": ["video", "lipsync", "face-restore", "ffmpeg", "transcode", "mcp", "gfpgan"],
+  "skills": "./skills/"
+}

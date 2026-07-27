@@ -1,0 +1,22 @@
+{
+  "name": "flickies",
+  "description": "Self-hosted video toolkit — lipsync, face restore, and ffmpeg ops (trim, concat, transcode, scale) via REST and MCP",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/docker-flickies",
+  "license": "WTFPL",
+  "keywords": ["video", "lipsync", "face-restore", "ffmpeg", "transcode", "mcp", "gfpgan"],
+  "userConfig": {
+    "flickies_url": {
+      "type": "string",
+      "title": "flickies URL",
+      "description": "Base URL of your running flickies server, e.g. http://localhost:8000 (sets FLICKIES_URL).",
+      "required": true
+    },
+    "flickies_auth_token": {
+      "type": "string",
+      "title": "flickies auth token",
+      "description": "Bearer token. Only needed if the server was started with FLICKIES_AUTH_TOKEN set.",
+      "sensitive": true
+    }
+  }
+}
