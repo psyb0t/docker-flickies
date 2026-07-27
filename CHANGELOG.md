@@ -4,6 +4,13 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.15] - 2026-07-27
+
+Codex install command was missing from the README. Documentation only, no behavior change.
+
+- The `## Agent integrations` → Codex section told readers to add the marketplace but never told them how to install the plugin from it. Added the missing command: `codex plugin add flickies@psyb0t`.
+- Clarified that the invocation form depends on how the skill was picked up: installed via the marketplace it's `$flickies:flickies`, while Codex's automatic pickup from a repo's own `.agents/skills/` (no install needed) uses plain `$flickies`.
+
 ## [0.3.14] - 2026-07-27
 
 Agent-client distribution wiring. Documentation only, no behavior change.
