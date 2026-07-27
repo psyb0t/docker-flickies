@@ -1,9 +1,8 @@
 # flickies
 
+[![version](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/version.svg)](https://github.com/psyb0t/docker-flickies/releases)
+[![license](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/license.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/flickies?style=flat-square)](https://hub.docker.com/r/psyb0t/flickies)
-[![Docker Hub](https://img.shields.io/docker/v/psyb0t/flickies?sort=semver&label=Docker%20Hub&style=flat-square)](https://hub.docker.com/r/psyb0t/flickies)
-[![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg?style=flat-square)](http://www.wtfpl.net/)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg?style=flat-square)](https://www.python.org/downloads/)
 
 **Video toolkit. One port. Zero cloud. Lipsync, face restore, ffmpeg. Fire-and-forget async jobs. Webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec.**
 

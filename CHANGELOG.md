@@ -4,6 +4,10 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.12] - 2026-07-27
+
+- Added self-hosted version and license badges plus a Docker Hub pulls badge; wired a badges job into pipeline.yml.
+
 ## [0.3.11] - 2026-07-26
 
 Listed on the official MCP Registry — no behavior change.
