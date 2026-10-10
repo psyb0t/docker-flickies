@@ -4,6 +4,10 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.17], 2026-10-10
+
+Documentation only. The README's agent integrations section names [peen](https://github.com/psyb0t/peen) as an example of an agent that reads `.agents/skills/`.
+
 ## [0.3.16] - 2026-08-01
 
 Infrastructure only. No behavior, image, or API change — every commit in this
