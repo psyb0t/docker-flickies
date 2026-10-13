@@ -4,6 +4,7 @@
 [![version](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/version.svg)](https://github.com/psyb0t/docker-flickies/releases)
 [![license](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/license.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/flickies?style=flat-square)](https://hub.docker.com/r/psyb0t/flickies)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/psyb0t/docker-flickies)
 
 **Video toolkit. One port. Zero cloud. Lipsync, face restore, ffmpeg. Fire-and-forget async jobs. Webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec.**
 
