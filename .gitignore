@@ -130,3 +130,6 @@ tests/integration/.fixtures/*
 .telemetry/
 .refactor/
 .anustimes/
+
+# Review receipt for the local release script.
+git-update.sh.debot

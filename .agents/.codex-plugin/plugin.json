@@ -1,7 +1,7 @@
 {
   "name": "flickies",
   "version": "0.3.17",
-  "description": "Self-hosted video toolkit — lipsync, face restore, and ffmpeg ops (trim, concat, transcode, scale) via REST and MCP",
+  "description": "Self-hosted video toolkit: lipsync, face restore, and ffmpeg ops (trim, concat, transcode, scale) via REST and MCP.",
   "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
   "homepage": "https://github.com/psyb0t/docker-flickies",
   "repository": "https://github.com/psyb0t/docker-flickies",
