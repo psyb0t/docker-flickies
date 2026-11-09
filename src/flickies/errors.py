@@ -6,10 +6,10 @@ Error codes are UPPER_SNAKE_CASE. The same code names appear in:
   - generated Go + Python clients (so callers can switch on code without
     duplicating string literals)
 """
+
 from __future__ import annotations
 
 from fastapi import HTTPException
-
 
 # ── codes ──────────────────────────────────────────────────────────────────
 CODE_BAD_REQUEST = "BAD_REQUEST"

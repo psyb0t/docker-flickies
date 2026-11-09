@@ -1,1 +1,8 @@
 .telemetry/
+
+# agent scratch and local caches, never part of a build
+.research_files/
+.anustimes/
+.refactor/
+.pytest_cache/
+.ruff_cache/

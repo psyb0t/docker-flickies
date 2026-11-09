@@ -5,6 +5,7 @@ the routing layer, error envelope shape, auth, file staging, jobs,
 ffmpeg singleton helper (which actually shells out to ffmpeg if available),
 and the non-commercial gate refusal.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -13,7 +14,6 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -25,6 +25,7 @@ def app_client(monkeypatch, tmp_path: Path) -> TestClient:
     monkeypatch.delenv("FLICKIES_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("FLICKIES_ENABLE_NONCOMMERCIAL", raising=False)
     from flickies.server import build_app
+
     return TestClient(build_app())
 
 
@@ -53,7 +54,7 @@ def test_list_engines(app_client: TestClient) -> None:
     assert engines["wav2lip"]["noncommercial"] is True
     assert engines["latentsync-1.5"]["noncommercial"] is False
     assert "ffmpeg-ops" not in engines  # ffmpeg is NOT an engine
-    assert "ffprobe" not in engines     # nor is ffprobe
+    assert "ffprobe" not in engines  # nor is ffprobe
 
 
 def test_auth_blocks_without_token(monkeypatch, tmp_path: Path) -> None:
@@ -159,9 +160,17 @@ def test_info_roundtrip_with_real_ffmpeg(app_client: TestClient, tmp_path: Path)
     src = files_root / "tone.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-f", "lavfi", "-i", "testsrc=duration=1:size=128x96:rate=10",
-            "-pix_fmt", "yuv420p",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=1:size=128x96:rate=10",
+            "-pix_fmt",
+            "yuv420p",
             str(src),
         ],
         check=True,
@@ -187,9 +196,17 @@ def test_trim_with_real_ffmpeg(app_client: TestClient, tmp_path: Path) -> None:
     src = files_root / "tone.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-f", "lavfi", "-i", "testsrc=duration=2:size=128x96:rate=10",
-            "-pix_fmt", "yuv420p",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=2:size=128x96:rate=10",
+            "-pix_fmt",
+            "yuv420p",
             str(src),
         ],
         check=True,

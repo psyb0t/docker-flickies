@@ -39,7 +39,7 @@ DEV_RUN_TTY := docker run --rm -it \
         build build-cuda build-all \
         run run-cuda \
         test test-unit test-integration test-unit-cov-gate \
-        lint format check clean \
+        lint format check clean docs \
         generate generate-models generate-check \
         generate-client-go generate-client-python \
         pkg-lock pkg-upgrade pkg-add pkg-remove pkg-update pkg-compile-heavy
@@ -219,6 +219,26 @@ generate-client-python: dev-image ## Regenerate the typed Python client from ope
 generate-check: generate ## CI gate — fail if generated files drift from openapi.yaml
 	@git diff --exit-code src/flickies/schema pkg/clients || \
 		(echo "Generated files drift from openapi.yaml — run 'make generate' and commit" >&2; exit 1)
+
+# -----------------------------------------------------------------------------
+# Docs site. Builds docs/ with the image GitHub Pages uses, into the
+# gitignored .testing/docs-site, so a broken page shows up before a push.
+# -----------------------------------------------------------------------------
+
+DOCS_IMAGE := ghcr.io/actions/jekyll-build-pages:v1.0.13@sha256:6791ebfd912185ed59bfb5fb102664fa872496b79f87ff8b9cfba292a7345041
+
+docs: ## Build the GitHub Pages site from docs/ into .testing/docs-site
+	mkdir -p .testing/docs-site
+	docker run --rm \
+		--user $(UID):$(GID) \
+		-e HOME=/tmp \
+		-e GITHUB_WORKSPACE=/work \
+		-e GITHUB_REPOSITORY=psyb0t/docker-flickies \
+		-e INPUT_SOURCE=docs \
+		-e INPUT_DESTINATION=.testing/docs-site \
+		-e INPUT_VERBOSE=false \
+		-v $(PWD):/work \
+		$(DOCS_IMAGE)
 
 clean: ## Remove build / cache artifacts (host-side)
 	docker rmi $(CPU_IMAGE) $(CUDA_IMAGE) 2>/dev/null || true

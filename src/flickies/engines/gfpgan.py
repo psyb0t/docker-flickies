@@ -11,6 +11,7 @@ Process pattern: read frames via cv2, run restorer per frame, write back
 to mp4 via cv2.VideoWriter. Audio track is preserved by muxing the
 original audio over the restored frames at the end (ffmpeg pass).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +26,6 @@ from typing import Any
 
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
-
 
 _log = logging.getLogger("flickies.engines.gfpgan")
 
@@ -74,15 +74,19 @@ def _ensure_gfpgan_weights() -> Path:
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
     from huggingface_hub import snapshot_download
+
     _log.info("fetching gfpgan via HF snapshot", extra={"repo": _GFPGAN_HF_REPO})
     try:
-        snap = Path(snapshot_download(
-            repo_id=_GFPGAN_HF_REPO,
-            local_files_only=_offline(),
-        ))
+        snap = Path(
+            snapshot_download(
+                repo_id=_GFPGAN_HF_REPO,
+                local_files_only=_offline(),
+            )
+        )
     except Exception as e:  # noqa: BLE001
         raise http_error(
-            400, CODE_BAD_REQUEST,
+            400,
+            CODE_BAD_REQUEST,
             f"GFPGAN repo {_GFPGAN_HF_REPO} unavailable: {e}. Manual fallback: "
             f"place {_GFPGAN_HF_FILE} at {legacy} and retry (FLICKIES_OFFLINE=1).",
         ) from e
@@ -107,8 +111,12 @@ class GFPGAN(Engine):
     def _load_sync(self) -> None:
         device = _select_device()
         ckpt = _ensure_gfpgan_weights()
-        from gfpgan import GFPGANer
-        _log.info("loading gfpgan", extra={"path": str(ckpt), "device": device, "engine_slug": "gfpgan"})
+        # pyright resolves `gfpgan` to this sibling module, not the installed package.
+        from gfpgan import GFPGANer  # pyright: ignore[reportAttributeAccessIssue]
+
+        _log.info(
+            "loading gfpgan", extra={"path": str(ckpt), "device": device, "engine_slug": "gfpgan"}
+        )
         # arch='clean' is the GFPGANv1.4 architecture.
         self._restorer = GFPGANer(
             model_path=str(ckpt),
@@ -132,6 +140,7 @@ class GFPGAN(Engine):
         gc.collect()
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -154,6 +163,7 @@ class GFPGAN(Engine):
         )
         started = time.monotonic()
         from fastapi import HTTPException
+
         try:
             await asyncio.to_thread(self._restore_sync, src, dst)
         except HTTPException:
@@ -222,14 +232,25 @@ class GFPGAN(Engine):
             # Mux original audio back in.
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", str(silent_out),
-                    "-i", str(src),
-                    "-c:v", "libx264",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac",
-                    "-map", "0:v:0",
-                    "-map", "1:a:0?",
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(silent_out),
+                    "-i",
+                    str(src),
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "aac",
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0?",
                     "-shortest",
                     str(dst),
                 ],

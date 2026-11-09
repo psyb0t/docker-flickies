@@ -1,11 +1,11 @@
 """Flickies runtime config — env-var parsed, fail-fast validated."""
+
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 

@@ -16,6 +16,7 @@ Implements the canonical contract from ~/.claude/rules/06-logging.md +
 
 Module name = `logging_config` (not `logging`) to avoid shadowing stdlib.
 """
+
 from __future__ import annotations
 
 import contextvars
@@ -28,7 +29,6 @@ from pathlib import Path
 from typing import Any
 
 from pythonjsonlogger import jsonlogger
-
 
 # ── secret pattern — applied to BOTH keys and string values ────────────────
 SECRET_RE = re.compile(
@@ -43,6 +43,7 @@ _scope: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar(
 
 
 # ── public scope API ────────────────────────────────────────────────────────
+
 
 def with_scope(**kv: Any) -> contextvars.Token:
     """Layer attrs onto the current scope. Returns a token; pass to reset()."""
@@ -60,6 +61,7 @@ def get_scope() -> dict[str, Any]:
 
 # ── filter — pulls current scope onto every record ─────────────────────────
 
+
 class ScopeFilter(logging.Filter):
     """Attach every scope attr onto the LogRecord so the formatter emits them."""
 
@@ -67,9 +69,16 @@ class ScopeFilter(logging.Filter):
         for k, v in _scope.get().items():
             # Don't overwrite stdlib-reserved fields (e.g. `msg`, `name`).
             if not hasattr(record, k) or k in {
-                "trace_id", "request_id", "user_id", "workflow_id",
-                "activity_id", "job_id", "correlation_id", "engine_slug",
-                "component", "session_id",
+                "trace_id",
+                "request_id",
+                "user_id",
+                "workflow_id",
+                "activity_id",
+                "job_id",
+                "correlation_id",
+                "engine_slug",
+                "component",
+                "session_id",
             }:
                 setattr(record, k, v)
         # Defaults so the JSON output always carries these keys.
@@ -97,10 +106,13 @@ class RedactingJsonFormatter(jsonlogger.JsonFormatter):
     def formatTime(  # noqa: N802 — overriding stdlib name
         self,
         record: logging.LogRecord,
-        datefmt: str | None = None,
+        # The override keeps logging.Formatter's signature; the format is fixed.
+        datefmt: str | None = None,  # noqa: ARG002
     ) -> str:
         from datetime import datetime, timezone
-        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+
+        # datetime.UTC needs Python 3.11; requires-python still allows 3.10.
+        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)  # noqa: UP017
         # sub-ms truncated to 3 digits, trailing Z = UTC.
         return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
 
@@ -140,8 +152,7 @@ class RedactingJsonFormatter(jsonlogger.JsonFormatter):
 # ── entry point ─────────────────────────────────────────────────────────────
 
 _DEFAULT_FMT = (
-    "%(asctime)s %(levelname)s %(name)s %(filename)s %(lineno)d "
-    "%(funcName)s %(message)s"
+    "%(asctime)s %(levelname)s %(name)s %(filename)s %(lineno)d " "%(funcName)s %(message)s"
 )
 _FIELD_RENAMES = {
     "asctime": "time",

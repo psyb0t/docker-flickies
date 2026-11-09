@@ -6,6 +6,7 @@ When `FLICKIES_AUTH_TOKEN` is set, every request must include
 Exemptions: `/healthz` is always reachable so docker probes keep working.
 `OPTIONS` requests (CORS preflights) are let through.
 """
+
 from __future__ import annotations
 
 import hmac
@@ -13,7 +14,6 @@ import json
 import logging
 
 from starlette.types import ASGIApp, Receive, Scope, Send
-
 
 _log = logging.getLogger("flickies.auth")
 
@@ -28,9 +28,7 @@ class BearerAuthMiddleware:
         self.app = app
         self.token = token
 
-    async def __call__(
-        self, scope: Scope, receive: Receive, send: Send
-    ) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if not self.token:
             await self.app(scope, receive, send)
             return
@@ -76,15 +74,13 @@ def _extract_bearer(scope: Scope) -> str | None:
         if name == b"authorization":
             decoded = value.decode("latin-1")
             if decoded.startswith(_BEARER_PREFIX):
-                return decoded[len(_BEARER_PREFIX):].strip()
+                return decoded[len(_BEARER_PREFIX) :].strip()
             return None
     return None
 
 
 async def _send_401(send: Send, detail: str) -> None:
-    body = json.dumps(
-        {"code": "UNAUTHORIZED", "message": detail}
-    ).encode("utf-8")
+    body = json.dumps({"code": "UNAUTHORIZED", "message": detail}).encode("utf-8")
     await send(
         {
             "type": "http.response.start",

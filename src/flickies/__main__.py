@@ -1,4 +1,5 @@
 """flickies entrypoint — `python -m flickies`."""
+
 from __future__ import annotations
 
 import uvicorn

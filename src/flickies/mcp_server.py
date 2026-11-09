@@ -17,8 +17,10 @@ Tools:
 Mirror of the REST surface; argument shapes match openapi.yaml so
 generated TS/Go/Python clients can be used interchangeably with MCP.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -31,7 +33,6 @@ from flickies.engines._registry import EngineNotRegistered, Registry
 from flickies.fetch import fetch_to_temp
 from flickies.ffmpeg import FFmpeg
 from flickies.files import files_dir, resolve_safe
-
 
 _log = logging.getLogger("flickies.mcp")
 
@@ -85,7 +86,9 @@ def build_mcp_server(
 
     def _resolve_output(output_path: str | None) -> Path:
         if not output_path:
-            raise ValueError("output_path is required for MCP tools (output_url not supported here)")
+            raise ValueError(
+                "output_path is required for MCP tools (output_url not supported here)"
+            )
         dst = resolve_safe(files_dir(cfg.data_dir), output_path)
         dst.parent.mkdir(parents=True, exist_ok=True)
         return dst
@@ -102,16 +105,18 @@ def build_mcp_server(
         for slug in registry.slugs():
             eng = registry.get(slug)
             spec = eng.spec
-            out.append({
-                "slug": slug,
-                "executor": spec.get("executor", ""),
-                "variant": spec.get("variant"),
-                "loaded": eng.loaded(),
-                "noncommercial": bool(spec.get("noncommercial", False)),
-                "cuda_only": bool(spec.get("cuda_only", False)),
-                "vram_gb_min": spec.get("vram_gb_min"),
-                "description": spec.get("description", ""),
-            })
+            out.append(
+                {
+                    "slug": slug,
+                    "executor": spec.get("executor", ""),
+                    "variant": spec.get("variant"),
+                    "loaded": eng.loaded(),
+                    "noncommercial": bool(spec.get("noncommercial", False)),
+                    "cuda_only": bool(spec.get("cuda_only", False)),
+                    "vram_gb_min": spec.get("vram_gb_min"),
+                    "description": spec.get("description", ""),
+                }
+            )
         return {"engines": out, "loaded_engine": registry.loaded_slug()}
 
     @mcp.tool()
@@ -125,10 +130,8 @@ def build_mcp_server(
             return await ffmpeg.info(src)
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
 
     @mcp.tool()
     async def lipsync(
@@ -170,15 +173,11 @@ def build_mcp_server(
                 raise ValueError(str(e)) from e
         finally:
             if face_is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     face.unlink()
-                except OSError:
-                    pass
             if audio_is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     audio.unlink()
-                except OSError:
-                    pass
         size = dst.stat().st_size
         # Optional face restore chain — acquires GFPGAN second; this triggers
         # hot-swap eviction of the lipsync model, which is desired (frees VRAM).
@@ -210,10 +209,8 @@ def build_mcp_server(
             await eng.restore(src, dst)  # type: ignore[attr-defined]
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -238,19 +235,20 @@ def build_mcp_server(
         src, is_tmp = await _resolve_video(file_path, file_url)
         try:
             await ffmpeg.transcode(
-                src, dst,
+                src,
+                dst,
                 output_format=output_format,
                 video_codec=video_codec,
                 audio_codec=audio_codec,
-                crf=crf, preset=preset, fps=fps,
+                crf=crf,
+                preset=preset,
+                fps=fps,
                 gif_options=gif_options,
             )
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -275,10 +273,8 @@ def build_mcp_server(
             await ffmpeg.trim(src, dst, start_sec, end_sec, precise=precise)
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -312,10 +308,8 @@ def build_mcp_server(
             await ffmpeg.concat(resolved, dst, precise=precise)
         finally:
             for t in tmps:
-                try:
+                with contextlib.suppress(OSError):
                     t.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -334,10 +328,8 @@ def build_mcp_server(
             await ffmpeg.scale(src, dst, width=width, height=height, keep_aspect=keep_aspect)
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -361,15 +353,11 @@ def build_mcp_server(
             await ffmpeg.mux_audio(v, a, dst, replace_existing_audio=replace_existing_audio)
         finally:
             if v_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     v.unlink()
-                except OSError:
-                    pass
             if a_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     a.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -386,10 +374,8 @@ def build_mcp_server(
             await ffmpeg.extract_audio(src, dst, audio_format)
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     @mcp.tool()
@@ -407,16 +393,17 @@ def build_mcp_server(
         src, is_tmp = await _resolve_video(file_path, file_url)
         try:
             await ffmpeg.thumbnail_grid(
-                src, dst,
-                rows=rows, cols=cols,
-                cell_width=cell_width, cell_height=cell_height,
+                src,
+                dst,
+                rows=rows,
+                cols=cols,
+                cell_width=cell_width,
+                cell_height=cell_height,
             )
         finally:
             if is_tmp:
-                try:
+                with contextlib.suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
         return {"path": output_path, "size": dst.stat().st_size}
 
     return mcp

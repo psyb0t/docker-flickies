@@ -1,13 +1,13 @@
 """Smoke tests — config loads, engines.json + openapi.yaml parse, registry
 basics work, non-commercial gate refuses when not opted in.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -47,23 +47,26 @@ def test_version_derives_from_pyproject() -> None:
     runtime `__version__` derives via importlib.metadata. Never hardcoded.
     Verify the derivation works AND matches pyproject."""
     import re
+
     pyproject = (REPO_ROOT / "pyproject.toml").read_text()
     m = re.search(r'^version\s*=\s*"([^"]+)"', pyproject, re.MULTILINE)
     assert m is not None, "pyproject.toml missing [project] version"
     canonical = m.group(1)
 
     from flickies import __version__
+
     # Either the installed package matches pyproject, or we're in a
     # bare source checkout w/ the sentinel — both are valid states; the
     # sentinel is intentionally NOT a hardcoded version number.
-    assert __version__ in (canonical, "0.0.0+source"), (
-        f"version drift: pyproject={canonical} runtime={__version__}"
-    )
+    assert __version__ in (
+        canonical,
+        "0.0.0+source",
+    ), f"version drift: pyproject={canonical} runtime={__version__}"
 
     version_file = (REPO_ROOT / "src" / "flickies" / "__version__.py").read_text()
-    assert "importlib.metadata" in version_file, (
-        "__version__.py must derive via importlib.metadata, not hardcode"
-    )
+    assert (
+        "importlib.metadata" in version_file
+    ), "__version__.py must derive via importlib.metadata, not hardcode"
 
 
 def test_noncommercial_gate_refuses_when_not_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:

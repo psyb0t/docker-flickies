@@ -1,6 +1,6 @@
 [project]
 name = "flickies"
-version = "0.3.1"
+version = "0.3.18"
 description = "Self-hosted video REST + MCP API — lipsync (Wav2Lip + LatentSync 1.5), face restoration (GFPGAN), pure-ffmpeg video ops, async jobs, webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec."
 license = { text = "WTFPL" }
 requires-python = ">=3.10,<3.13"
@@ -67,6 +67,10 @@ exclude-newer = "2026-06-14T00:00:00Z"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# src/flickies/_vendor/ is vendored upstream code (LatentSync, Wav2Lip), kept
+# as shipped. _generated.py is written by `make generate-models`; formatting
+# it by hand would make `make generate-check` report drift.
+extend-exclude = ["src/flickies/_vendor", "src/flickies/schema/_generated.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "ARG", "SIM", "C4"]
@@ -77,6 +81,7 @@ ignore = ["E501"]  # ruff format handles line length
 
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", "**/_generated.py"]
+# src/flickies/_vendor/ is vendored upstream code, not checked here.
+exclude = ["**/__pycache__", "**/_generated.py", "src/flickies/_vendor"]
 pythonVersion = "3.12"
 reportMissingImports = "none"  # heavy ML libs live only in prod images

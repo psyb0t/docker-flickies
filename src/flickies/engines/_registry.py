@@ -15,15 +15,16 @@ The registry is process-global. FastAPI handlers call
 capability method. The lock around acquire serialises hot-swaps so two
 concurrent requests for different models can't race.
 """
+
 from __future__ import annotations
 
 import asyncio
-import os
+import contextlib
 import logging
-from typing import Iterable
+import os
+from collections.abc import Iterable
 
 from flickies.engines.base import Engine
-
 
 log = logging.getLogger(__name__)
 
@@ -151,8 +152,6 @@ class Registry:
         if self._sweeper_task is None:
             return
         self._sweeper_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await self._sweeper_task
-        except asyncio.CancelledError:
-            pass
         self._sweeper_task = None

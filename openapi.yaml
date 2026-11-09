@@ -18,8 +18,9 @@ info:
 
     ## API contract
 
-    Every video endpoint takes a JSON body. Multipart upload is supported
-    only on `PUT /v1/files/{path}` — the local-staging interface.
+    Every video endpoint takes a JSON body. Nothing is multipart:
+    `PUT /v1/files/{path}`, the local-staging interface, takes the raw file
+    bytes as the request body.
 
     **Input** — exactly one of:
       - `file_path` (FILES_DIR-relative, server reads from local /v1/files
@@ -32,8 +33,17 @@ info:
       - `output_url` (server PUTs to the URL — presigned PUT or
         PUT-accepting endpoint; response JSON is `{url, size, ...}`)
 
-    `async_job=true` auto-stages to `jobs/{id}.{ext}` under FILES_DIR if
-    neither output is given.
+    With `async_job=true` the result always goes to `jobs/<uuid>.<ext>`
+    under FILES_DIR and `output_path` / `output_url` are ignored. The file
+    name is not the job id: read it from `result.path` on
+    `GET /v1/jobs/{job_id}`.
+
+    ## Auth
+
+    When the server has `FLICKIES_AUTH_TOKEN` set, every route in this
+    document, `/v1/health` included, needs `Authorization: Bearer <token>`.
+    Only the unversioned liveness probe `GET /healthz` (not described here)
+    is exempt.
 
 servers:
   - url: http://localhost:8000
@@ -485,7 +495,6 @@ paths:
       tags: [Health]
       operationId: getHealth
       summary: Liveness + discovery
-      security: []
       responses:
         "200":
           description: Server status.

@@ -9,9 +9,11 @@ its async methods directly.
 Every op shells out to /usr/bin/ffmpeg or /usr/bin/ffprobe via asyncio
 subprocess. Captures stderr; on non-zero exit raises a structured error.
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import shlex
@@ -19,7 +21,6 @@ from pathlib import Path
 from typing import Any
 
 from flickies.errors import CODE_FFMPEG_FAILED, http_error
-
 
 _log = logging.getLogger("flickies.ffmpeg")
 
@@ -104,27 +105,46 @@ class FFmpeg:
         )
         if precise:
             await _run(
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                "-i", str(src),
-                "-ss", str(start),
-                "-to", str(end),
-                "-c:v", _PRECISE_VIDEO_CODEC,
-                "-crf", _PRECISE_CRF,
-                "-preset", _PRECISE_PRESET,
-                "-c:a", _PRECISE_AUDIO_CODEC,
-                "-b:a", _PRECISE_AUDIO_BITRATE,
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                str(src),
+                "-ss",
+                str(start),
+                "-to",
+                str(end),
+                "-c:v",
+                _PRECISE_VIDEO_CODEC,
+                "-crf",
+                _PRECISE_CRF,
+                "-preset",
+                _PRECISE_PRESET,
+                "-c:a",
+                _PRECISE_AUDIO_CODEC,
+                "-b:a",
+                _PRECISE_AUDIO_BITRATE,
                 str(dst),
             )
             return
         await _run(
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-ss", str(start),
-            "-to", str(end),
-            "-i", str(src),
-            "-c", "copy",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-ss",
+            str(start),
+            "-to",
+            str(end),
+            "-i",
+            str(src),
+            "-c",
+            "copy",
             str(dst),
         )
-
 
     # ── concat ─────────────────────────────────────────────────────────
     async def concat(
@@ -157,30 +177,49 @@ class FFmpeg:
         try:
             if precise:
                 await _run(
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-f", "concat", "-safe", "0",
-                    "-i", str(list_file),
-                    "-c:v", _PRECISE_VIDEO_CODEC,
-                    "-crf", _PRECISE_CRF,
-                    "-preset", _PRECISE_PRESET,
-                    "-c:a", _PRECISE_AUDIO_CODEC,
-                    "-b:a", _PRECISE_AUDIO_BITRATE,
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    str(list_file),
+                    "-c:v",
+                    _PRECISE_VIDEO_CODEC,
+                    "-crf",
+                    _PRECISE_CRF,
+                    "-preset",
+                    _PRECISE_PRESET,
+                    "-c:a",
+                    _PRECISE_AUDIO_CODEC,
+                    "-b:a",
+                    _PRECISE_AUDIO_BITRATE,
                     str(dst),
                 )
             else:
                 await _run(
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-f", "concat", "-safe", "0",
-                    "-i", str(list_file),
-                    "-c", "copy",
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    str(list_file),
+                    "-c",
+                    "copy",
                     str(dst),
                 )
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 list_file.unlink()
-            except OSError:
-                pass
-
 
     # ── transcode (universal re-encode: mp4/webm/mov/mkv + gif) ────────
     async def transcode(
@@ -215,8 +254,13 @@ class FFmpeg:
             await self._transcode_gif(src, dst, fps=fps, gif_options=gif_options or {})
             return
         cmd: list[str] = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src),
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
         ]
         cmd += ["-c:v", video_codec] if video_codec else []
         cmd += ["-c:a", audio_codec] if audio_codec else []
@@ -225,7 +269,6 @@ class FFmpeg:
         cmd += ["-r", str(fps)] if fps is not None else []
         cmd += [str(dst)]
         await _run(*cmd)
-
 
     async def _transcode_gif(
         self,
@@ -240,18 +283,21 @@ class FFmpeg:
         loop = int(gif_options.get("loop", 0))
         # palette_mode reserved for future tuning; full = single global palette.
         scale = f"scale={width}:-2:flags=lanczos," if width else ""
-        vf = (
-            f"{scale}fps={gif_fps},"
-            f"split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
-        )
+        vf = f"{scale}fps={gif_fps}," f"split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
         await _run(
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src),
-            "-filter_complex", vf,
-            "-loop", str(loop),
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
+            "-filter_complex",
+            vf,
+            "-loop",
+            str(loop),
             str(dst),
         )
-
 
     # ── scale ──────────────────────────────────────────────────────────
     async def scale(
@@ -271,13 +317,19 @@ class FFmpeg:
         else:
             vf = f"scale={width}:{height}"
         await _run(
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src),
-            "-vf", vf,
-            "-c:a", "copy",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
+            "-vf",
+            vf,
+            "-c:a",
+            "copy",
             str(dst),
         )
-
 
     # ── mux audio ──────────────────────────────────────────────────────
     async def mux_audio(
@@ -289,18 +341,27 @@ class FFmpeg:
         replace_existing_audio: bool,
     ) -> None:
         args = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(video),
-            "-i", str(audio),
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-map", "0:v:0",
-            "-map", "1:a:0" if replace_existing_audio else "1:a:0",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(video),
+            "-i",
+            str(audio),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0" if replace_existing_audio else "1:a:0",
             "-shortest",
             str(dst),
         ]
         await _run(*args)
-
 
     # ── extract audio ──────────────────────────────────────────────────
     async def extract_audio(self, src: Path, dst: Path, audio_format: str) -> None:
@@ -315,13 +376,17 @@ class FFmpeg:
         if codec_args is None:
             raise http_error(400, "BAD_REQUEST", f"unsupported audio format: {audio_format}")
         await _run(
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src),
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
             "-vn",
             *codec_args,
             str(dst),
         )
-
 
     # ── thumbnail grid ─────────────────────────────────────────────────
     async def thumbnail_grid(
@@ -338,27 +403,34 @@ class FFmpeg:
         n = rows * cols
         # Use `select='not(mod(n,N))'` with N derived from total frames via
         # a probe; simpler — use the `thumbnail` filter then tile.
-        vf = (
-            f"thumbnail=100,scale={cell_width}:{cell_height},"
-            f"tile={cols}x{rows}"
-        )
+        vf = f"thumbnail=100,scale={cell_width}:{cell_height}," f"tile={cols}x{rows}"
         await _run(
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src),
-            "-vf", vf,
-            "-frames:v", "1",
-            "-vsync", "vfr",
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
+            "-vf",
+            vf,
+            "-frames:v",
+            "1",
+            "-vsync",
+            "vfr",
             str(dst),
         )
         # n is only used in vf-build above; reference it to satisfy linters.
         _ = n
 
-
     # ── ffprobe (info) ─────────────────────────────────────────────────
     async def info(self, src: Path) -> dict[str, Any]:
         out, _ = await _run(
-            "ffprobe", "-v", "error",
-            "-print_format", "json",
+            "ffprobe",
+            "-v",
+            "error",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
             str(src),

@@ -9,12 +9,14 @@ Most video endpoints reference inputs by `file_path` (FILES_DIR-relative)
 and write outputs there too. URL-based inputs/outputs (`file_url` /
 `output_url`) bypass this layer.
 """
+
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
 
 from flickies.errors import (
     CODE_BAD_REQUEST,
@@ -22,7 +24,6 @@ from flickies.errors import (
     CODE_PAYLOAD_TOO_LARGE,
     http_error,
 )
-
 
 _MAX_UPLOAD_BYTES_DEFAULT = 5 * 1024 * 1024 * 1024  # 5 GiB
 _STREAM_CHUNK = 1024 * 1024  # 1 MiB
@@ -89,10 +90,8 @@ async def save_stream(
             total += len(chunk)
             if total > limit:
                 f.close()
-                try:
+                with contextlib.suppress(OSError):
                     target.unlink()
-                except OSError:
-                    pass
                 raise http_error(
                     413,
                     CODE_PAYLOAD_TOO_LARGE,

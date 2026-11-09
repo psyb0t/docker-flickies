@@ -7,8 +7,10 @@ Writes: stream a local file out via HTTP PUT (presigned URLs welcome).
 timeouts. SSRF is enforced at the URL parser stage — only http(s),
 no localhost / private IPs unless FLICKIES_ALLOW_PRIVATE_FETCH=1.
 """
+
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 import logging
 import os
@@ -24,7 +26,6 @@ from flickies.errors import (
     CODE_UPSTREAM_FETCH_FAILED,
     http_error,
 )
-
 
 _log = logging.getLogger("flickies.fetch")
 
@@ -52,6 +53,7 @@ def _scope_headers() -> dict[str, str]:
     logs correlate with ours (per ~/.claude/rules/06-logging.md scope
     propagation contract)."""
     from flickies.logging_config import get_scope
+
     s = get_scope()
     out: dict[str, str] = {}
     rid = s.get("request_id")
@@ -108,36 +110,45 @@ async def fetch_to_temp(url: str, *, suffix: str = "") -> Path:
     fd, tmp = tempfile.mkstemp(prefix="flickies-in-", suffix=suffix)
     os.close(fd)
     p = Path(tmp)
-    _log.debug("url fetch start", extra={"url": loggable_url(url), "dst": str(p), "timeout_secs": _FETCH_TIMEOUT})
+    _log.debug(
+        "url fetch start",
+        extra={"url": loggable_url(url), "dst": str(p), "timeout_secs": _FETCH_TIMEOUT},
+    )
     total = 0
     try:
-        async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT, follow_redirects=True) as client:
-            async with client.stream("GET", url, headers=_scope_headers()) as resp:
-                if resp.status_code >= 400:
-                    _log.warning(
-                        "url fetch failed: upstream error",
-                        extra={"url": loggable_url(url), "status": resp.status_code, "reason": "upstream_non_2xx"},
-                    )
-                    raise http_error(
-                        502,
-                        CODE_UPSTREAM_FETCH_FAILED,
-                        f"upstream GET {url} returned {resp.status_code}",
-                    )
-                with p.open("wb") as f:
-                    async for chunk in resp.aiter_bytes():
-                        total += len(chunk)
-                        f.write(chunk)
+        async with (
+            httpx.AsyncClient(timeout=_FETCH_TIMEOUT, follow_redirects=True) as client,
+            client.stream("GET", url, headers=_scope_headers()) as resp,
+        ):
+            if resp.status_code >= 400:
+                _log.warning(
+                    "url fetch failed: upstream error",
+                    extra={
+                        "url": loggable_url(url),
+                        "status": resp.status_code,
+                        "reason": "upstream_non_2xx",
+                    },
+                )
+                raise http_error(
+                    502,
+                    CODE_UPSTREAM_FETCH_FAILED,
+                    f"upstream GET {url} returned {resp.status_code}",
+                )
+            with p.open("wb") as f:
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    f.write(chunk)
     except httpx.HTTPError as e:
         _log.warning(
             "url fetch failed: transport error",
             extra={"url": loggable_url(url), "err": str(e), "reason": "transport_error"},
         )
-        try:
+        with contextlib.suppress(OSError):
             p.unlink()
-        except OSError:
-            pass
         raise http_error(502, CODE_UPSTREAM_FETCH_FAILED, str(e)) from e
-    _log.debug("url fetch complete", extra={"url": loggable_url(url), "dst": str(p), "bytes": total})
+    _log.debug(
+        "url fetch complete", extra={"url": loggable_url(url), "dst": str(p), "bytes": total}
+    )
     return p
 
 
@@ -154,7 +165,11 @@ async def put_file(src: Path, url: str) -> int:
                 if resp.status_code >= 400:
                     _log.warning(
                         "url upload failed: upstream error",
-                        extra={"url": loggable_url(url), "status": resp.status_code, "reason": "upstream_non_2xx"},
+                        extra={
+                            "url": loggable_url(url),
+                            "status": resp.status_code,
+                            "reason": "upstream_non_2xx",
+                        },
                     )
                     raise http_error(
                         502,

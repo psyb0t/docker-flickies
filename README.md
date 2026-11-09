@@ -5,7 +5,7 @@
 [![license](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/license.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/flickies?style=flat-square)](https://hub.docker.com/r/psyb0t/flickies)
 
-**Video toolkit. One port. Zero cloud. Lipsync, face restore, ffmpeg. Fire-and-forget async jobs. Webhooks. Spec-first OpenAPI; typed Go + Python clients generated from the same spec.**
+**Video toolkit. One port. Zero cloud. Lipsync, face restore, ffmpeg. Fire-and-forget async jobs. Webhooks. Spec-first OpenAPI; Go + Python clients generated from the same spec.**
 
 The video sibling of [audiolla](https://github.com/psyb0t/docker-audiolla) (audio) and [talkies](https://github.com/psyb0t/docker-talkies) (speech). Same wire format, same async-job model, same bind-mount-`/data` story, same Makefile shape, same `:latest` + `:latest-cuda` split, same opt-in non-commercial gate.
 
@@ -19,166 +19,72 @@ No account. No subscription. `docker run` and you're done.
 
 | | |
 |--|--|
-| 👄 **Lipsync** | **LatentSync 1.5** (ByteDance, Apache-2.0, default on CUDA) + **Wav2Lip / Wav2Lip-GAN** (Rudrabha, fast/low-VRAM, behind `FLICKIES_ENABLE_NONCOMMERCIAL=1`) |
-| 🧹 **Face restore** | **GFPGAN v1.4** (TencentARC, Apache-2.0) — chains after Wav2Lip to fix the soft 96×96 mouth crop, or use standalone |
-| ⚙️ **ffmpeg ops** | Trim · concat · transcode (incl. gif + fps + codec change) · scale · mux audio · extract audio · thumbnail grid — pure ffmpeg, CPU |
-| 📋 **Info** | ffprobe metadata at `/v1/video/info` — duration, codec, fps, dimensions, bitrate |
-| 🔗 **MCP server** | All endpoints exposed as MCP tools so function-calling LLMs can drive the pipeline |
-| 📜 **Spec-first** | `openapi.yaml` is the single source of truth — server-side Pydantic, Go client, and Python client all regenerated from one file |
-| 🐳 **Hot-swap eviction + idle unload** | One GPU pool. Different model requested → current model evicted. Idle longer than `FLICKIES_IDLE_UNLOAD_SECS` (default 600s) → unloaded by the sweeper. |
+| 👄 **Lipsync** | **LatentSync 1.5** (ByteDance, Apache-2.0, default, CUDA image) + **Wav2Lip / Wav2Lip-GAN** (Rudrabha, fast and low-VRAM, behind `FLICKIES_ENABLE_NONCOMMERCIAL=1`) |
+| 🧹 **Face restore** | **GFPGAN v1.4** (TencentARC, Apache-2.0). Cleans up the soft 96×96 Wav2Lip mouth crop, or use it standalone |
+| ⚙️ **ffmpeg ops** | Trim · concat · transcode (incl. gif + fps + codec change) · scale · mux audio · extract audio · thumbnail grid. Pure ffmpeg, CPU |
+| 📋 **Info** | ffprobe metadata at `/v1/video/info`: duration, codec, fps, dimensions, bitrate |
+| 🔗 **MCP server** | 11 tools at `/v1/mcp` so function-calling LLMs can drive the pipeline |
+| 📜 **Spec-first** | `openapi.yaml` is the single source; server models, Go client and Python client are all generated from it |
+| 🐳 **Hot-swap eviction + idle unload** | One GPU pool, one model resident. A different model evicts the current one. Idle longer than `FLICKIES_IDLE_UNLOAD_SECS` (default 600s) and the sweeper unloads it |
 
 ## Quick start
 
 ```bash
 docker run -d --name flickies \
-  -v $HOME/flickies-data:/data \
-  -p 8000:8000 \
+  -v "$HOME/flickies-data:/data" \
+  -p 127.0.0.1:8000:8000 \
   psyb0t/flickies:latest
+
+curl -s -X PUT --data-binary @clip.mp4 \
+  http://localhost:8000/v1/files/uploads/clip.mp4
 
 curl -s -X POST http://localhost:8000/v1/video/info \
   -H "Content-Type: application/json" \
   -d '{"file_path": "uploads/clip.mp4"}' | jq
 ```
 
-CUDA image at `psyb0t/flickies:latest-cuda` runs every engine at usable speed. CPU image runs all ffmpeg ops (trim/concat/transcode incl. gif/scale/mux/extract/thumbnail-grid/info) + Wav2Lip-CPU (~44s for a 3s clip; OK for short ones). GFPGAN + LatentSync 1.5 are CUDA-only — CPU image refuses to load them.
+Paths are relative to the staging area, `/data/files` in the container.
 
-Weights live in the standard HuggingFace cache layout under `/data/hf/hub/models--<org>--<name>/{blobs,snapshots,refs}/…` — content-addressed blobs, snapshot-named symlinks, reusable by any other HF-aware tool sharing the bind mount (not just flickies). Sources:
+`psyb0t/flickies:latest-cuda` (with `--gpus all`) runs every engine at usable speed and is the only image with LatentSync 1.5. The CPU image runs every ffmpeg op, GFPGAN on the CPU, and Wav2Lip on the CPU (about 44s for a 3s clip, fine for short ones).
 
-| engine | HF repo |
-|---|---|
-| `wav2lip` / `wav2lip-gan` | `Nekochu/Wav2Lip` |
-| S3FD detector | `ByteDance/LatentSync-1.5` (bundled in `auxiliary/`) |
-| `gfpgan` | `leonelhs/gfpgan` |
-| `latentsync-1.5` | `ByteDance/LatentSync-1.5` |
+Weights download from Hugging Face on first use into `/data/hf`, in the standard cache layout any other Hugging Face tool on the same mount can reuse. Set `FLICKIES_ENABLED_ENGINES` or `FLICKIES_PREFETCH_ALL=1` to pull them at boot instead.
 
-**Lazy by default** — each engine fetches its repo on first request. Set `FLICKIES_ENABLED_ENGINES=wav2lip,gfpgan` (or `FLICKIES_PREFETCH_ALL=1`) to pull at boot before uvicorn starts. `FLICKIES_OFFLINE=1` disables auto-download (operators stage the snapshot dir manually).
+Auth is off until you set `FLICKIES_AUTH_TOKEN`. Set it before the port leaves your machine.
 
-## Auth
+## Documentation
 
-Bearer token set via env. Any string works:
+Full docs: **[psyb0t.github.io/docker-flickies](https://psyb0t.github.io/docker-flickies/)**
 
-```bash
-docker run -e FLICKIES_AUTH_TOKEN=testme ...
-# clients then send: curl -H "Authorization: Bearer testme" ...
-```
-
-Unset → auth disabled. `/healthz` is always probe-exempt.
-
-## Logging
-
-Structured JSON to **both** stderr AND a rotating file at `FLICKIES_LOG_FILE` (default `/data/logs/flickies.log`, 50 MB × 5 backups). Every line carries `time` (ISO 8601 UTC sub-ms), `level`, `logger`, `file`, `line`, `func`, `msg`, `trace_id`, `request_id` + typed extras.
-
-Inbound `X-Request-Id` (UUID v4 OR ULID; garbage → server mints fresh) threads onto the logging scope via `ContextVar` + echoes back on the response. Outbound httpx fetches forward `X-Request-Id` + `X-Trace-Id` so the next hop's logs correlate. Sensitive keys (`authorization`, `cookie`, `*token*`, `*secret*`, `hf_*`, `sk-ant-*`) get `[REDACTED]` automatically at format time.
-
-Default level is `INFO`; set `FLICKIES_LOG_LEVEL=DEBUG` for reconstruction-grade tracing: every ffmpeg/ffprobe command + result, each transform's decision (e.g. trim `stream_copy` vs `precise_reencode`) + output size, engine inference timing (`wall_secs`), URL fetch/upload byte counts, and job lifecycle. Logged URLs are stripped of their query string so presigned credentials never reach the logs.
-
-## MCP
-
-Eleven tools at `/v1/mcp` via streamable-HTTP JSON-RPC: `list_engines`, `info`, `lipsync`, `restore`, `transcode`, `trim`, `concat`, `scale`, `mux_audio`, `extract_audio`, `thumbnail_grid`. Point a function-calling LLM at it (LibreChat, Cursor, Claude desktop with the MCP connector) and it drives the pipeline.
-
-## Hardware ceiling
-
-Tested target: **RTX 3060 12 GB**. Fits LatentSync 1.5 (~8 GB) with headroom. Wav2Lip + GFPGAN chain peaks at ~5 GB. One engine resident at a time — different model request triggers hot-swap eviction.
+| Section | What's there |
+| --- | --- |
+| [Getting started](https://psyb0t.github.io/docker-flickies/getting-started/) | First upload, trim, lipsync job and download |
+| [Deployment](https://psyb0t.github.io/docker-flickies/deployment/) | Images, `/data` layout, model weights, prefetch, offline staging, upgrades |
+| [Configuration](https://psyb0t.github.io/docker-flickies/configuration/) | Every environment variable and its default |
+| [REST API](https://psyb0t.github.io/docker-flickies/api/) | Every endpoint, async jobs, webhooks, headers, error codes |
+| [Engines](https://psyb0t.github.io/docker-flickies/engines/) | LatentSync, Wav2Lip, GFPGAN, licenses, VRAM, hot-swap |
+| [MCP and agents](https://psyb0t.github.io/docker-flickies/mcp/) | The 11 MCP tools, Claude Code, Codex and OpenClaw installs |
+| [Generated clients](https://psyb0t.github.io/docker-flickies/clients/) | Go and Python clients and their gaps |
+| [Logging](https://psyb0t.github.io/docker-flickies/logging/) | JSON log fields, request ids, redaction, DEBUG |
+| [Security](https://psyb0t.github.io/docker-flickies/security/) | What it reaches and stores, what to set before exposing it |
+| [Troubleshooting](https://psyb0t.github.io/docker-flickies/troubleshooting/) | Error messages, causes and fixes |
+| [Development](https://psyb0t.github.io/docker-flickies/development/) | Make targets, tests, code generation, CI and releases |
 
 ## License posture
 
-Wav2Lip variants are trained on LRS2 (non-commercial). The server **refuses to load them** unless `FLICKIES_ENABLE_NONCOMMERCIAL=1` is set in the server env. LatentSync 1.5 (Apache-2.0) is the commercial-safe default — no gate.
-
-| Engine | License | Gate |
-|--------|---------|------|
-| LatentSync 1.5 | Apache-2.0 | none |
-| Wav2Lip / Wav2Lip-GAN | LRS2 non-commercial | `FLICKIES_ENABLE_NONCOMMERCIAL=1` |
-| GFPGAN | Apache-2.0 | none |
-| ffmpeg / ffprobe (not an engine; standard CPU helper) | LGPL (ffmpeg) | none |
-
-Same pattern as audiolla's MusicGen / matchering gates.
-
-## Spec-first
-
-Every request/response shape lives in [`openapi.yaml`](openapi.yaml). The Pydantic models in `src/flickies/schema/_generated.py`, the Go client in `pkg/clients/go/client.gen.go`, and the Python client in `pkg/clients/python/flickies-client/` are all generated from that single file.
-
-```bash
-make generate              # regenerate all three (server models + Go client + Python client)
-make generate-models       # just server-side Pydantic
-make generate-client-go    # just the Go client
-make generate-client-python # just the Python client
-make generate-check        # CI gate — fail if generated files drift from openapi.yaml
-```
-
-Never hand-edit generated files. Edit `openapi.yaml`, run `make generate`, commit everything together.
-
-## Generated clients
-
-### Go
-
-```bash
-go get github.com/psyb0t/docker-flickies/pkg/clients/go@latest
-```
-
-```go
-import flickies "github.com/psyb0t/docker-flickies/pkg/clients/go"
-
-c, _ := flickies.NewClient("http://localhost:8000")
-resp, err := c.PostVideoLipsync(ctx, flickies.VideoLipsyncRequest{...})
-```
-
-### Python
-
-```bash
-pip install "git+https://github.com/psyb0t/docker-flickies.git#subdirectory=pkg/clients/python/flickies-client"
-```
-
-```python
-from flickies_client import Client
-from flickies_client.api.lipsync import post_video_lipsync
-from flickies_client.models import VideoLipsyncRequest
-
-client = Client(base_url="http://localhost:8000")
-result = post_video_lipsync.sync(client=client, body=VideoLipsyncRequest(...))
-```
+Wav2Lip variants are trained on LRS2 (non-commercial). The server **refuses to load them** unless `FLICKIES_ENABLE_NONCOMMERCIAL=1` is set in the server env. LatentSync 1.5 (Apache-2.0) is the commercial-safe default, no gate. Details in [Engines](https://psyb0t.github.io/docker-flickies/engines/#licenses).
 
 ## Agent integrations
 
-The [skill](.agents/skills/flickies) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)), and installs natively in the clients below.
-
-### Claude Code
-
-```bash
-claude plugin marketplace add psyb0t/agents
-claude plugin install flickies@psyb0t
-```
-
-Claude Code prompts for the flickies URL and, if auth is enabled, the token — the token is stored in your OS keychain.
-
-### Codex
-
-```bash
-codex plugin marketplace add psyb0t/agents
-codex plugin add flickies@psyb0t
-```
-
-Installed via the marketplace, the skill invokes as `$flickies:flickies`. Codex also picks the skill up automatically with no install in any repo containing `.agents/skills/`, where it invokes as plain `$flickies`.
-
-### OpenClaw
-
-The skill is published to ClawHub on every release:
-
-```bash
-openclaw skills install @psyb0t/flickies
-```
-
-For MCP clients that speak local stdio, the [`@psyb0t/flickies`](.agents/plugins/flickies) plugin bridges to flickies' `/v1/mcp` endpoint:
-
-```bash
-openclaw plugins install clawhub:@psyb0t/flickies
-```
-
-Then set `FLICKIES_URL` (and `FLICKIES_AUTH_TOKEN` if the server requires one).
+The [skill](https://github.com/psyb0t/docker-flickies/tree/main/.agents/skills/flickies) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)), and installs natively in Claude Code (`claude plugin install flickies@psyb0t`), Codex (`codex plugin add flickies@psyb0t`) and OpenClaw (`openclaw skills install @psyb0t/flickies`). Marketplace setup and the OpenClaw MCP bridge plugin are in [MCP and agents](https://psyb0t.github.io/docker-flickies/mcp/).
 
 ## aigate integration
 
-Mounts in [aigate](https://github.com/psyb0t/aigate) at `/flickies/` and `/flickies-cuda/` behind the same nginx → `make run-bg` lives. `FLICKIES=1` and `FLICKIES_CUDA=1` toggle the variants.
+[aigate](https://github.com/psyb0t/aigate) runs flickies at `/flickies/` (CPU, `FLICKIES=1`) and `/flickies-cuda/` (CUDA, `FLICKIES_CUDA=1`).
 
 ## License
 
-WTFPL for flickies itself. Bundled models follow their upstream licenses — review before commercial redistribution.
+WTFPL for flickies itself. Bundled models and vendored code follow their upstream licenses ([THIRD_PARTY.md](https://github.com/psyb0t/docker-flickies/blob/main/THIRD_PARTY.md)), so review them before commercial redistribution.
+
+## Sponsor
+
+<a href="https://www.buymeacoffee.com/psyb0t"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me a Coffee" height="60" width="217"></a>

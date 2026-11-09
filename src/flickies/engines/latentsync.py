@@ -19,6 +19,7 @@ Implementation: vendored code at flickies._vendor.latentsync_pkg.
 We construct the LipsyncPipeline directly and call it; the upstream
 inference script's behaviour is preserved.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,7 +33,6 @@ from typing import Any
 
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
-
 
 _log = logging.getLogger("flickies.engines.latentsync")
 
@@ -64,6 +64,7 @@ def _ensure_weights() -> Path:
       - plus training blobs we don't use
     """
     from huggingface_hub import snapshot_download
+
     _log.info("fetching LatentSync 1.5 via HF snapshot", extra={"repo": _LATENTSYNC_HF_REPO})
     try:
         snapshot = snapshot_download(
@@ -72,7 +73,8 @@ def _ensure_weights() -> Path:
         )
     except Exception as e:  # noqa: BLE001
         raise http_error(
-            400, CODE_BAD_REQUEST,
+            400,
+            CODE_BAD_REQUEST,
             f"LatentSync weights unavailable: {e}. Offline mode requires "
             f"the snapshot pre-staged under HF_HOME=/data/hf.",
         ) from e
@@ -82,6 +84,7 @@ def _ensure_weights() -> Path:
 def _config_path() -> Path:
     # Use the vendored stage2.yaml (256x256 resolution, fits 3060 12GB).
     from flickies._vendor.latentsync_pkg import __file__ as pkg_init
+
     return Path(pkg_init).parent / "configs" / "unet" / "stage2.yaml"
 
 
@@ -113,7 +116,8 @@ class LatentSync(Engine):
 
         if not torch.cuda.is_available():
             raise http_error(
-                400, CODE_BAD_REQUEST,
+                400,
+                CODE_BAD_REQUEST,
                 "latentsync-1.5 is CUDA-only; FLICKIES_DEVICE=cuda required.",
             )
 
@@ -162,7 +166,10 @@ class LatentSync(Engine):
 
         self._pipeline = pipeline
         self._device = "cuda"
-        _log.info("latentsync loaded", extra={"engine_slug": self.slug, "device": self._device, "dtype": str(self._dtype)})
+        _log.info(
+            "latentsync loaded",
+            extra={"engine_slug": self.slug, "device": self._device, "dtype": str(self._dtype)},
+        )
 
     async def unload(self) -> None:
         if self._pipeline is None:
@@ -178,6 +185,7 @@ class LatentSync(Engine):
         gc.collect()
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -197,10 +205,16 @@ class LatentSync(Engine):
         await self.get_model()
         _log.debug(
             "latentsync inference start",
-            extra={"engine_slug": self.slug, "face": str(face), "audio": str(audio), "dst": str(dst)},
+            extra={
+                "engine_slug": self.slug,
+                "face": str(face),
+                "audio": str(audio),
+                "dst": str(dst),
+            },
         )
         started = time.monotonic()
         from fastapi import HTTPException
+
         try:
             await asyncio.to_thread(self._lipsync_sync, face, audio, dst)
         except HTTPException:
@@ -220,8 +234,8 @@ class LatentSync(Engine):
         )
 
     def _lipsync_sync(self, face: Path, audio: Path, dst: Path) -> None:
-        import torch
         from accelerate.utils import set_seed
+
         assert self._pipeline is not None and self._config is not None
 
         seed = int.from_bytes(os.urandom(2), "big")
@@ -232,6 +246,7 @@ class LatentSync(Engine):
             # Resolve mask_image_path against the vendored utils dir
             # (config carries an upstream-relative `latentsync/utils/mask.png`).
             from flickies._vendor.latentsync_pkg import __file__ as _pkg_init
+
             mask_abs = Path(_pkg_init).parent / "utils" / "mask.png"
             self._pipeline(
                 video_path=str(face),

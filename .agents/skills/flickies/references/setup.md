@@ -3,7 +3,7 @@
 ## Requirements
 
 - Docker
-- Optional: NVIDIA GPU + NVIDIA Container Toolkit for the CUDA image (required for `latentsync-1.5` and `gfpgan`; Wav2Lip runs on CPU too, slowly)
+- Optional: NVIDIA GPU + NVIDIA Container Toolkit for the CUDA image (required for `latentsync-1.5`; Wav2Lip and GFPGAN run on the CPU too, slowly)
 - A bind-mounted `/data` volume for model weights + staged files (weights live in the standard HuggingFace cache layout and are reusable across containers)
 - Tested GPU ceiling: **RTX 3060 12 GB** — fits LatentSync 1.5 (~8 GB) with headroom; the Wav2Lip + GFPGAN chain peaks at ~5 GB. One engine resident at a time.
 
@@ -11,7 +11,7 @@
 
 ### CPU
 
-Runs every ffmpeg op (trim / concat / transcode incl. gif / scale / mux / extract / thumbnail-grid / info) plus Wav2Lip-CPU (~44s for a 3s clip — fine for short clips, and only when the non-commercial gate is set). GFPGAN and LatentSync 1.5 are CUDA-only — the CPU image refuses to load them.
+Runs every ffmpeg op (trim / concat / transcode incl. gif / scale / mux / extract / thumbnail-grid / info), GFPGAN on the CPU, and Wav2Lip-CPU (~44s for a 3s clip, fine for short clips, and only when the non-commercial gate is set). LatentSync 1.5 is CUDA-only: its libraries are not in the CPU image, so a LatentSync request fails there.
 
 ```bash
 docker run -d --name flickies \
@@ -57,7 +57,7 @@ Weights live in the standard HuggingFace cache layout under `/data/hf/hub/models
 |---|---|---|---|
 | `latentsync-1.5` | `ByteDance/LatentSync-1.5` | Apache-2.0 | none (CUDA-only) |
 | `wav2lip` / `wav2lip-gan` | `Nekochu/Wav2Lip` | LRS2 non-commercial | `FLICKIES_ENABLE_NONCOMMERCIAL=1` |
-| `gfpgan` | `leonelhs/gfpgan` | Apache-2.0 | none (CUDA-only) |
+| `gfpgan` | `leonelhs/gfpgan` | Apache-2.0 | none (CPU and CUDA) |
 | S3FD detector | `ByteDance/LatentSync-1.5` (bundled) | — | — |
 
 **Lazy by default** — each engine fetches its repo on first request. To pull at boot before the server accepts requests, set `FLICKIES_ENABLED_ENGINES=wav2lip,gfpgan` (prefetch just those) or `FLICKIES_PREFETCH_ALL=1` (prefetch all; CUDA engines pulled only when the device is CUDA). `FLICKIES_OFFLINE=1` skips auto-download entirely (operator stages the snapshot dir manually).
@@ -73,17 +73,28 @@ All server-side (set at `docker run` time). Everything defaults sensibly; the tw
 | `FLICKIES_AUTH_TOKEN` | (empty = no auth) | Bearer token required on every route except `/healthz`. Empty/unset = wide open: the API/MCP surface is unauthenticated and anyone who can reach the port gets full access. When set, `Authorization: Bearer <token>` is required on every HTTP request and MCP call. Set it for any deployment beyond localhost, and bind to loopback / behind an authenticating proxy. See [Security & safety](../SKILL.md#security--safety) in the skill doc. |
 | `FLICKIES_ENABLE_NONCOMMERCIAL` | (unset = refuse) | Set to `1` / `true` / `yes` / `on` to allow the `wav2lip` / `wav2lip-gan` engines to load (LRS2 non-commercial training data). Unset → those slugs return 403 `NONCOMMERCIAL_GATE_REFUSED`. |
 | `FLICKIES_DEVICE` | `auto` | `auto` picks `cuda` if available else `cpu`. Also `cpu` / `cuda`. |
-| `FLICKIES_DATA_DIR` | `/data` | Base data dir. Staged files → `<data>/uploads` + FILES_DIR; model snapshots → `<data>/hf` cache; async job outputs → `<data>/jobs/`. Bind-mount to persist across restarts. |
+| `FLICKIES_DATA_DIR` | `/data` | Base data dir. FILES_DIR (staged files, every `file_path` / `output_path`) is `<data>/files`; async job outputs go to `<data>/files/jobs/`; model snapshots to the `<data>/hf` cache; logs to `<data>/logs/`. Bind-mount to persist across restarts. |
 
 ### Engines + prefetch
 
 | Var | Default | What it does |
 |---|---|---|
 | `FLICKIES_ENGINES_FILE` | `/app/engines.json` | Path to the engine registry JSON. Override to ship a custom subset. |
-| `FLICKIES_ENABLED_ENGINES` | (empty = all, lazy) | Comma-separated engine slug whitelist to prefetch at boot. Empty → download lazily on first request. |
+| `FLICKIES_ENABLED_ENGINES` | (empty = none at boot) | Comma-separated engine slugs to prefetch at boot. Empty: each engine downloads on its first request. It does not limit which engines can be used. |
 | `FLICKIES_PREFETCH_ALL` | (unset) | `1` → prefetch every engine in `engines.json` at boot (CUDA engines only when the device is CUDA). |
 | `FLICKIES_OFFLINE` | (unset) | `1` → skip prefetch; weights must be staged manually. |
 | `FLICKIES_IDLE_UNLOAD_SECS` | `600` | Idle seconds before the background sweeper unloads a resident engine from VRAM. Set high to keep a model warm. |
+| `FLICKIES_SWEEP_INTERVAL_SECS` | `30` | How often the idle sweeper runs. |
+
+### Limits and URL fetching
+
+| Var | Default | What it does |
+|---|---|---|
+| `FLICKIES_MAX_UPLOAD_BYTES` | `5368709120` (5 GiB) | Largest `PUT /v1/files/{path}` body; bigger uploads get 413. |
+| `FLICKIES_RATE_LIMIT_PER_MIN` | `60` | Requests per minute per client IP. `0` turns it off. `/healthz` is exempt. |
+| `FLICKIES_IDEMPOTENCY_CACHE_SIZE` | `1024` | How many `Idempotency-Key` responses to remember. `0` turns the cache off. |
+| `FLICKIES_FETCH_TIMEOUT_SECS` | `300` | Timeout for `file_url` downloads and `output_url` uploads. |
+| `FLICKIES_ALLOW_PRIVATE_FETCH` | (unset) | `1` allows `file_url` / `output_url` hosts on private, loopback or link-local addresses. Unset, they get 400. |
 
 ### Webhooks
 

@@ -10,6 +10,7 @@ All three are pure-stdlib ASGI middleware so flickies stays dep-light.
 - IdempotencyMiddleware: dedupe POST writes by Idempotency-Key header.
   In-memory LRU keyed on (key, method, path) → cached (status, body).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -24,7 +25,6 @@ from collections import OrderedDict
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from flickies.logging_config import reset_scope, with_scope
-
 
 _log = logging.getLogger("flickies.middleware")
 
@@ -64,6 +64,7 @@ def _get_header(scope: Scope, name: bytes) -> str | None:
 
 # ── request id ────────────────────────────────────────────────────────────
 
+
 class RequestIdMiddleware:
     """Seed (trace_id, request_id) onto the logging scope; echo both back."""
 
@@ -97,6 +98,7 @@ class RequestIdMiddleware:
 
 
 # ── rate limit (per-IP token bucket) ─────────────────────────────────────
+
 
 def _rate_per_min() -> int:
     raw = os.environ.get("FLICKIES_RATE_LIMIT_PER_MIN", "60").strip()
@@ -162,25 +164,30 @@ class RateLimitMiddleware:
                 "rate_limit refused",
                 extra={"ip": ip, "path": path, "reason": "bucket_empty"},
             )
-            body = json.dumps({
-                "code": "RATE_LIMITED",
-                "message": "rate limit exceeded; back off",
-            }).encode("utf-8")
-            await send({
-                "type": "http.response.start",
-                "status": 429,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(body)).encode("ascii")),
-                    (b"retry-after", b"60"),
-                ],
-            })
+            body = json.dumps(
+                {
+                    "code": "RATE_LIMITED",
+                    "message": "rate limit exceeded; back off",
+                }
+            ).encode("utf-8")
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 429,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode("ascii")),
+                        (b"retry-after", b"60"),
+                    ],
+                }
+            )
             await send({"type": "http.response.body", "body": body})
             return
         await self.app(scope, receive, send)
 
 
 # ── idempotency ──────────────────────────────────────────────────────────
+
 
 def _idempotency_cap() -> int:
     raw = os.environ.get("FLICKIES_IDEMPOTENCY_CACHE_SIZE", "1024").strip()

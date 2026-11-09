@@ -1,11 +1,11 @@
 """Middleware tests — request_id echo, rate limit, idempotency."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -53,6 +53,7 @@ def test_request_id_rejects_invalid_shape(base_env, monkeypatch) -> None:
     assert rid and rid != "not-a-uuid; DROP TABLE;\n"
     # Generated UUIDv4
     import re
+
     assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", rid)
 
 
@@ -67,7 +68,7 @@ def test_rate_limit_429_after_capacity(base_env, monkeypatch) -> None:
     assert r.status_code == 429
     body = r.json()
     assert body["code"] == "RATE_LIMITED"
-    assert "retry-after" in {k.lower() for k in r.headers.keys()}
+    assert "retry-after" in {k.lower() for k in r.headers}
 
 
 def test_healthz_exempt_from_rate_limit(base_env, monkeypatch) -> None:

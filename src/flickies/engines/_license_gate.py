@@ -5,6 +5,7 @@ or training data are non-commercial (LRS2-trained Wav2Lip variants) refuse
 to load unless the operator sets FLICKIES_ENABLE_NONCOMMERCIAL=1 in the
 server env.
 """
+
 from __future__ import annotations
 
 import os

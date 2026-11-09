@@ -1,6 +1,7 @@
 """Pytest config — ensure src/ is on sys.path when running outside the dev image,
 and register the gpu / hf_gated / noncommercial markers used by integration tests.
 """
+
 from __future__ import annotations
 
 import os
@@ -8,7 +9,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SRC = _ROOT / "src"

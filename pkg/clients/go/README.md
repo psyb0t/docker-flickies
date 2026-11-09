@@ -11,21 +11,62 @@ go get github.com/psyb0t/docker-flickies/pkg/clients/go@latest
 
 ## Usage
 
+The package name is `flickiesclient`. Most generated request types are
+missing their endpoint-specific fields (`face_path`, `start_sec`, `width`
+and so on), because oapi-codegen drops the `properties` that sit next to
+an `allOf` in `openapi.yaml`. Typed methods work for health, engines,
+files, jobs, info and restore. For the other video routes, call the
+`...WithBody` method and send the JSON yourself:
+
 ```go
+package main
+
 import (
-    "context"
-    flickies "github.com/psyb0t/docker-flickies/pkg/clients/go"
+	"context"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	flickies "github.com/psyb0t/docker-flickies/pkg/clients/go"
 )
 
-client, _ := flickies.NewClient("http://localhost:8000")
-resp, err := client.PostVideoLipsync(context.Background(), flickies.VideoLipsyncRequest{
-    FacePath:        ptr("face.mp4"),
-    AudioPathOrUrl:  "voice.wav",
-    Engine:          ptr(flickies.VideoLipsyncRequestEngineLatentsync15),
-    RestoreFace:     ptr(true),
-    OutputPath:      ptr("out.mp4"),
-})
+func main() {
+	token := os.Getenv("FLICKIES_AUTH_TOKEN")
+
+	client, err := flickies.NewClient(
+		"http://localhost:8000",
+		flickies.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
+			if token != "" {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body := strings.NewReader(`{
+  "face_path": "uploads/face.mp4",
+  "audio_path": "uploads/voice.wav",
+  "engine": "latentsync-1.5",
+  "output_path": "out/talking.mp4"
+}`)
+
+	resp, err := client.PostVideoLipsyncWithBody(context.Background(), "application/json", body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	out, _ := io.ReadAll(resp.Body)
+	log.Println(resp.StatusCode, string(out))
+}
 ```
+
+Full docs: <https://psyb0t.github.io/docker-flickies/clients/>
 
 ## Regenerate
 

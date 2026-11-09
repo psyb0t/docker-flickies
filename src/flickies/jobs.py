@@ -10,15 +10,16 @@ with `psyb0t/docker-proxq` (Redis-backed job queue) — proxq wraps the
 sync route and gives the same job-id semantics from outside, without
 this in-process queue. See `~/.claude/rule-details/designing-an-api.md`.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Literal
-
+from typing import Any, Literal
 
 _log = logging.getLogger("flickies.jobs")
 
@@ -95,6 +96,7 @@ class JobQueue:
             if webhook_url:
                 # Lazy import to avoid pulling httpx into jobs.py at module load.
                 from flickies.webhooks import deliver
+
                 asyncio.create_task(deliver(webhook_url, job.to_dict()))
 
         job.task = asyncio.create_task(_runner())

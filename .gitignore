@@ -14,7 +14,6 @@ credentials.json
 *.pfx
 
 # Dev-level markdown — never commit
-CLAUDE.md
 implplan.md
 ANUSTIMES*.md
 .brutal-review.md
@@ -27,7 +26,6 @@ WIP.md
 
 # Local tooling
 git-update.sh
-.claude/
 about.txt
 pyrightconfig.json
 mypy.ini
@@ -133,3 +131,9 @@ tests/integration/.fixtures/*
 
 # Review receipt for the local release script.
 git-update.sh.debot
+
+# Local docs build output (make docs).
+.testing/
+
+# Local JSON configuration at any depth
+*.local.json

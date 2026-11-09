@@ -18,16 +18,17 @@ This wrapper module is hand-written and exposes:
     keeps both fields nullable and these helpers enforce the xor)
   - ``url_to_str`` to coerce ``AnyUrl`` → ``str | None``
 """
+
 from __future__ import annotations
+
+import contextlib
 
 from fastapi import HTTPException
 
 # The generated module is committed to git. Tests / dev environments that
 # don't have it yet will see an ImportError — run `make generate` to seed it.
-try:
+with contextlib.suppress(ImportError):
     from ._generated import *  # noqa: F401,F403
-except ImportError:  # pragma: no cover
-    pass
 
 
 def url_to_str(url) -> str | None:

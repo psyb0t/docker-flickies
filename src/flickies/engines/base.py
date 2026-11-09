@@ -3,6 +3,7 @@
 All engines share lazy-load + idle-unload semantics. ffmpeg / ffprobe are
 NOT engines — they're plain singletons (see src/flickies/ffmpeg.py).
 """
+
 from __future__ import annotations
 
 import asyncio

@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         make \
         ca-certificates \
+        libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain (oapi-codegen) — pinned by SHA.
@@ -38,6 +39,7 @@ RUN pip install --no-cache-dir \
         uvicorn==0.34.2 \
         pydantic==2.11.4 \
         python-multipart==0.0.20 \
+        python-json-logger==2.0.7 \
         ruff==0.7.0 \
         pyright==1.1.385 \
         pytest==8.3.3 \
@@ -46,5 +48,11 @@ RUN pip install --no-cache-dir \
     && pip install --no-cache-dir \
         'datamodel-code-generator[http]' \
         openapi-python-client
+
+# The pyright wheel fetches node and the pyright npm package on first run.
+# Do it at build time into a shared cache, so `make lint` works as any uid
+# with HOME=/tmp and without network. node needs libatomic1 (apt above).
+ENV PYRIGHT_PYTHON_CACHE_DIR=/opt/pyright-cache
+RUN pyright --version && chmod -R a+rwX /opt/pyright-cache
 
 WORKDIR /work

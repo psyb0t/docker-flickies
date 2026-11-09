@@ -10,6 +10,7 @@ Async-job mode: any video-producing endpoint with `async_job=true`
 returns 202 + {job_id} immediately; the work runs in a background task
 via flickies.jobs.JobQueue. Poll `GET /v1/jobs/{job_id}`.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -17,9 +18,10 @@ import logging
 import os
 import shutil
 import tempfile
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -34,7 +36,6 @@ from flickies.engines._registry import EngineNotRegistered, Registry
 from flickies.engines.gfpgan import GFPGAN
 from flickies.engines.latentsync import LatentSync
 from flickies.engines.wav2lip import Wav2Lip
-from flickies.ffmpeg import FFmpeg
 from flickies.errors import (
     CODE_BAD_REQUEST,
     CODE_ENGINE_NOT_REGISTERED,
@@ -44,21 +45,23 @@ from flickies.errors import (
     CODE_VALIDATION_FAILED,
     http_error,
 )
+from flickies.fetch import fetch_to_temp, loggable_url, put_file
+from flickies.ffmpeg import FFmpeg
 from flickies.files import (
     delete as delete_file,
+)
+from flickies.files import (
     files_dir,
     resolve_safe,
     save_stream,
     stream_file,
 )
-from flickies.fetch import fetch_to_temp, loggable_url, put_file
 from flickies.jobs import JobQueue
 from flickies.middleware import (
     IdempotencyMiddleware,
     RateLimitMiddleware,
     RequestIdMiddleware,
 )
-
 
 _log = logging.getLogger("flickies.server")
 
@@ -76,13 +79,21 @@ def _build_registry(cfg: Config) -> Registry:
         executor = spec.get("executor")
         cls = _EXECUTOR_MAP.get(executor) if isinstance(executor, str) else None
         if cls is None:
-            _log.warning("engine skipped — unknown executor", extra={"engine_slug": slug, "executor": str(executor), "reason": "unknown_executor"})
+            _log.warning(
+                "engine skipped — unknown executor",
+                extra={
+                    "engine_slug": slug,
+                    "executor": str(executor),
+                    "reason": "unknown_executor",
+                },
+            )
             continue
         r.register(cls(slug=slug, **spec))
     return r
 
 
 # ── input/output helpers ────────────────────────────────────────────────
+
 
 async def _resolve_input(
     cfg: Config,
@@ -95,7 +106,8 @@ async def _resolve_input(
     n = int(bool(file_path)) + int(bool(file_url))
     if n != 1:
         raise http_error(
-            400, CODE_BAD_REQUEST,
+            400,
+            CODE_BAD_REQUEST,
             "must provide exactly one of: file_path, file_url",
         )
     if file_path:
@@ -119,7 +131,8 @@ def _validate_output_xor(
         return
     if not has_path and not has_url:
         raise http_error(
-            400, CODE_BAD_REQUEST,
+            400,
+            CODE_BAD_REQUEST,
             "video-producing endpoint requires output_path or output_url "
             "(or set async_job=true)",
         )
@@ -147,10 +160,8 @@ async def _finalise_output(
         try:
             await put_file(tmp, output_url)
         finally:
-            try:
+            with suppress(OSError):
                 tmp.unlink()
-            except OSError:
-                pass
         _log.debug(
             "output finalised",
             extra={"mode": "url", "url": loggable_url(output_url), "size": size},
@@ -171,6 +182,7 @@ def _async_staged_path(_cfg: Config, ext: str, job_id: str) -> str:
 
 # ── app factory ─────────────────────────────────────────────────────────
 
+
 def build_app() -> FastAPI:
     cfg = load()
     registry = _build_registry(cfg)
@@ -182,6 +194,7 @@ def build_app() -> FastAPI:
     mcp_server: Any = None
     try:
         from flickies.mcp_server import build_mcp_server
+
         mcp_server = build_mcp_server(cfg=cfg, registry=registry, ffmpeg=ffmpeg)
     except ImportError as e:
         _log.warning("mcp server unavailable", extra={"err": str(e), "reason": "import_failed"})
@@ -317,17 +330,19 @@ def build_app() -> FastAPI:
         for slug in registry.slugs():
             eng = registry.get(slug)
             spec = eng.spec
-            out.append({
-                "slug": slug,
-                "executor": spec.get("executor", ""),
-                "variant": spec.get("variant"),
-                "loaded": eng.loaded(),
-                "noncommercial": bool(spec.get("noncommercial", False)),
-                "cuda_only": bool(spec.get("cuda_only", False)),
-                "vram_gb_min": spec.get("vram_gb_min"),
-                "description": spec.get("description", ""),
-                "last_used_secs_ago": eng.last_used_secs_ago(),
-            })
+            out.append(
+                {
+                    "slug": slug,
+                    "executor": spec.get("executor", ""),
+                    "variant": spec.get("variant"),
+                    "loaded": eng.loaded(),
+                    "noncommercial": bool(spec.get("noncommercial", False)),
+                    "cuda_only": bool(spec.get("cuda_only", False)),
+                    "vram_gb_min": spec.get("vram_gb_min"),
+                    "description": spec.get("description", ""),
+                    "last_used_secs_ago": eng.last_used_secs_ago(),
+                }
+            )
         return {"engines": out}
 
     @app.delete("/v1/engines/{slug}")
@@ -371,7 +386,7 @@ def build_app() -> FastAPI:
     async def _run_or_schedule(
         body: dict[str, Any],
         ext: str,
-        work: Callable[[Path], "asyncio.Future[Any] | Any"],
+        work: Callable[[Path], asyncio.Future[Any] | Any],
     ) -> tuple[int, dict[str, Any]]:
         """Either runs `work(tmp_output_path)` inline or schedules async.
 
@@ -386,6 +401,7 @@ def build_app() -> FastAPI:
             webhook_url = body.get("webhook_url")
             # Pre-allocate the job id so the staged path includes it.
             import uuid as _uuid
+
             preallocated_id = str(_uuid.uuid4())
 
             async def runner() -> dict[str, Any]:
@@ -404,31 +420,30 @@ def build_app() -> FastAPI:
                     return {"path": job_path, "size": out_size}
                 finally:
                     if tmp.exists():
-                        try:
+                        with suppress(OSError):
                             tmp.unlink()
-                        except OSError:
-                            pass
 
             job = await job_queue.submit(runner, webhook_url=webhook_url)
             return 202, {"job_id": job.job_id, "status": "accepted"}
 
         # Sync path.
-        with tempfile.NamedTemporaryFile(prefix="flickies-out-", suffix=f".{ext}", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            prefix="flickies-out-", suffix=f".{ext}", delete=False
+        ) as f:
             tmp = Path(f.name)
         try:
             await _maybe_await(work(tmp))
             payload = await _finalise_output(
-                cfg, tmp,
+                cfg,
+                tmp,
                 output_path=output_path,
                 output_url=output_url,
             )
             return 200, payload
         finally:
             if tmp.exists():
-                try:
+                with suppress(OSError):
                     tmp.unlink()
-                except OSError:
-                    pass
 
     async def _maybe_await(x: Any) -> Any:
         if asyncio.iscoroutine(x) or asyncio.isfuture(x):
@@ -445,6 +460,7 @@ def build_app() -> FastAPI:
             raise http_error(404, CODE_ENGINE_NOT_REGISTERED, str(e)) from e
 
         face_tmp_to_clean: list[Path] = []
+
         async def work(out: Path) -> None:
             face, face_tmp = await _resolve_input(
                 cfg,
@@ -459,7 +475,8 @@ def build_app() -> FastAPI:
             n_audio = int(bool(audio_path)) + int(bool(audio_url))
             if n_audio != 1:
                 raise http_error(
-                    400, CODE_BAD_REQUEST,
+                    400,
+                    CODE_BAD_REQUEST,
                     "must provide exactly one of: audio_path, audio_url",
                 )
             if audio_url:
@@ -474,10 +491,8 @@ def build_app() -> FastAPI:
             status, payload = await _run_or_schedule(body, "mp4", work)
         finally:
             for p in face_tmp_to_clean:
-                try:
+                with suppress(OSError):
                     p.unlink()
-                except OSError:
-                    pass
         return JSONResponse(status_code=status, content=payload)
 
     # ── /v1/video/restore (GFPGAN) ─────────────────────────────────────
@@ -489,6 +504,7 @@ def build_app() -> FastAPI:
             raise http_error(404, CODE_ENGINE_NOT_REGISTERED, str(e)) from e
 
         tmp_to_clean: list[Path] = []
+
         async def work(out: Path) -> None:
             src, is_tmp = await _resolve_input(
                 cfg,
@@ -503,17 +519,15 @@ def build_app() -> FastAPI:
             status, payload = await _run_or_schedule(body, "mp4", work)
         finally:
             for p in tmp_to_clean:
-                try:
+                with suppress(OSError):
                     p.unlink()
-                except OSError:
-                    pass
         return JSONResponse(status_code=status, content=payload)
 
     # ── helper for ffmpeg-driven routes (uses the singleton, not registry) ──
     async def _ffmpeg_handler(
         body: dict[str, Any],
         ext: str,
-        op_factory: Callable[[FFmpeg, Path, Path], "asyncio.Future[Any] | Any"],
+        op_factory: Callable[[FFmpeg, Path, Path], asyncio.Future[Any] | Any],
     ) -> JSONResponse:
         tmp_to_clean: list[Path] = []
 
@@ -531,19 +545,19 @@ def build_app() -> FastAPI:
             status, payload = await _run_or_schedule(body, ext, work)
         finally:
             for p in tmp_to_clean:
-                try:
+                with suppress(OSError):
                     p.unlink()
-                except OSError:
-                    pass
         return JSONResponse(status_code=status, content=payload)
 
     # ── ffmpeg-ops routes ──────────────────────────────────────────────
     @app.post("/v1/video/trim")
     async def post_trim(body: dict[str, Any]) -> JSONResponse:
         return await _ffmpeg_handler(
-            body, "mp4",
+            body,
+            "mp4",
             lambda eng, src, out: eng.trim(
-                src, out,
+                src,
+                out,
                 float(body["start_sec"]),
                 float(body["end_sec"]),
                 precise=bool(body.get("precise", False)),
@@ -555,7 +569,9 @@ def build_app() -> FastAPI:
         inputs_paths = body.get("inputs_paths") or []
         inputs_urls = body.get("inputs_urls") or []
         if bool(inputs_paths) == bool(inputs_urls):
-            raise http_error(400, CODE_BAD_REQUEST, "exactly one of inputs_paths / inputs_urls required")
+            raise http_error(
+                400, CODE_BAD_REQUEST, "exactly one of inputs_paths / inputs_urls required"
+            )
 
         tmp_to_clean: list[Path] = []
 
@@ -577,19 +593,19 @@ def build_app() -> FastAPI:
             status, payload = await _run_or_schedule(body, "mp4", work)
         finally:
             for p in tmp_to_clean:
-                try:
+                with suppress(OSError):
                     p.unlink()
-                except OSError:
-                    pass
         return JSONResponse(status_code=status, content=payload)
 
     @app.post("/v1/video/transcode")
     async def post_transcode(body: dict[str, Any]) -> JSONResponse:
         ext = body.get("output_format", "mp4")
         return await _ffmpeg_handler(
-            body, ext,
+            body,
+            ext,
             lambda eng, src, out: eng.transcode(
-                src, out,
+                src,
+                out,
                 output_format=ext,
                 video_codec=body.get("video_codec"),
                 audio_codec=body.get("audio_codec"),
@@ -603,9 +619,11 @@ def build_app() -> FastAPI:
     @app.post("/v1/video/scale")
     async def post_scale(body: dict[str, Any]) -> JSONResponse:
         return await _ffmpeg_handler(
-            body, "mp4",
+            body,
+            "mp4",
             lambda eng, src, out: eng.scale(
-                src, out,
+                src,
+                out,
                 width=int(body["width"]),
                 height=int(body["height"]),
                 keep_aspect=bool(body.get("keep_aspect", True)),
@@ -627,7 +645,9 @@ def build_app() -> FastAPI:
             video = await _resolve_or_url(body["video_path_or_url"], ".mp4")
             audio = await _resolve_or_url(body["audio_path_or_url"], ".wav")
             await ffmpeg.mux_audio(
-                video, audio, out,
+                video,
+                audio,
+                out,
                 replace_existing_audio=bool(body.get("replace_existing_audio", True)),
             )
 
@@ -635,26 +655,27 @@ def build_app() -> FastAPI:
             status, payload = await _run_or_schedule(body, "mp4", work)
         finally:
             for p in tmp_to_clean:
-                try:
+                with suppress(OSError):
                     p.unlink()
-                except OSError:
-                    pass
         return JSONResponse(status_code=status, content=payload)
 
     @app.post("/v1/video/extract_audio")
     async def post_extract_audio(body: dict[str, Any]) -> JSONResponse:
         audio_format = body.get("audio_format", "wav")
         return await _ffmpeg_handler(
-            body, audio_format,
+            body,
+            audio_format,
             lambda eng, src, out: eng.extract_audio(src, out, audio_format),
         )
 
     @app.post("/v1/video/thumbnail_grid")
     async def post_thumbnail_grid(body: dict[str, Any]) -> JSONResponse:
         return await _ffmpeg_handler(
-            body, "png",
+            body,
+            "png",
             lambda eng, src, out: eng.thumbnail_grid(
-                src, out,
+                src,
+                out,
                 rows=int(body["rows"]),
                 cols=int(body["cols"]),
                 cell_width=int(body.get("cell_width", 320)),
@@ -673,10 +694,8 @@ def build_app() -> FastAPI:
             return await ffmpeg.info(src)
         finally:
             if is_tmp:
-                try:
+                with suppress(OSError):
                     src.unlink()
-                except OSError:
-                    pass
 
     return app
 

@@ -4,6 +4,18 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [0.3.18], 2026-11-09
+
+Documentation site, a release pipeline that promotes tested images, lint that actually runs, and funding links. No API behaviour changed.
+
+- The documentation now lives at https://psyb0t.github.io/docker-flickies/, built by GitHub Pages from `docs/`: getting started, deployment, configuration, the HTTP API, engines, MCP, the generated clients, logging, security, troubleshooting and development. The README is a short summary that links there with full URLs, so the links also work on Docker Hub. `make docs` builds the site locally.
+- Doc corrections found while writing the site: GFPGAN runs on the CPU image too, only LatentSync is CUDA-only; file paths are relative to `/data/files`; async jobs always stage their result under `jobs/` and ignore `output_path` and `output_url`; `restore_face` only applies through MCP; `replace_existing_audio` and `gif_options.palette_mode` have no effect; `/v1/health` needs the token, only `/healthz` is open; uploads are raw bytes, not multipart. The OpenAPI description, the agent skill and the Go client README now say the same, and the Go client example compiles.
+- The pipeline runs `make lint` and `make test` on every push before any image is built. A `main` push also tags the images `:sha-<commit>`, and a `v*` tag waits for that commit's `main` run to pass, then promotes the same images to the release tag instead of rebuilding them. The GitHub release, ClawHub and the MCP Registry publish after the promotion.
+- `make lint` passes again: ruff skips the vendored LatentSync code and the generated schema, first-party code is fixed and formatted, and pyright runs in the dev image (it could not start before). The dev image installs `python-json-logger`, so `make test` runs.
+- `pyproject.toml` carries the release version again; it had stayed at 0.3.1.
+- Contributor guide (`AGENTS.md`) and project rules under `.agents/rules/`, with `CLAUDE.md` and `.claude` committed as links to them.
+- Added Buy Me a Coffee to the funding links and a Sponsor section to the README. The plugin manifests no longer use em dashes, and the issue-pull workflow runs at hours of its own instead of the hours every repository shared.
+
 ## [0.3.17], 2026-10-10
 
 Documentation only. The README's agent integrations section names [peen](https://github.com/psyb0t/peen) as an example of an agent that reads `.agents/skills/`.

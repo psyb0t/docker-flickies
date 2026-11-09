@@ -15,6 +15,7 @@ Weights expected at:  FLICKIES_DATA_DIR/models/wav2lip/<weights_file>
 S3FD face detector weights auto-fetched on first call to a path under
 FLICKIES_DATA_DIR/models/wav2lip/s3fd-619a316812.pth.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,7 +31,6 @@ from typing import Any
 from flickies.engines._license_gate import require_noncommercial_optin
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
-
 
 _log = logging.getLogger("flickies.engines.wav2lip")
 
@@ -80,11 +80,14 @@ def _ensure_s3fd_weights() -> Path:
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
     from huggingface_hub import snapshot_download
+
     _log.info("fetching S3FD via HF snapshot", extra={"repo": _S3FD_HF_REPO})
-    snap = Path(snapshot_download(
-        repo_id=_S3FD_HF_REPO,
-        local_files_only=_offline(),
-    ))
+    snap = Path(
+        snapshot_download(
+            repo_id=_S3FD_HF_REPO,
+            local_files_only=_offline(),
+        )
+    )
     return snap / _S3FD_HF_FILE
 
 
@@ -101,15 +104,19 @@ def _ensure_wav2lip_weights(weights_file: str) -> Path:
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
     from huggingface_hub import snapshot_download
+
     _log.info("fetching wav2lip via HF snapshot", extra={"repo": _WAV2LIP_HF_REPO})
     try:
-        snap = Path(snapshot_download(
-            repo_id=_WAV2LIP_HF_REPO,
-            local_files_only=_offline(),
-        ))
+        snap = Path(
+            snapshot_download(
+                repo_id=_WAV2LIP_HF_REPO,
+                local_files_only=_offline(),
+            )
+        )
     except Exception as e:  # noqa: BLE001
         raise http_error(
-            400, CODE_BAD_REQUEST,
+            400,
+            CODE_BAD_REQUEST,
             f"Wav2Lip repo {_WAV2LIP_HF_REPO} unavailable: {e}. "
             f"Manual fallback: place {weights_file} at {legacy} and retry "
             f"(FLICKIES_OFFLINE=1).",
@@ -130,7 +137,9 @@ def _load_wav2lip_model(checkpoint_path: Path, device: str):
     if device == "cuda":
         ckpt = torch.load(str(checkpoint_path), map_location="cuda", weights_only=False)
     else:
-        ckpt = torch.load(str(checkpoint_path), map_location=torch.device("cpu"), weights_only=False)
+        ckpt = torch.load(
+            str(checkpoint_path), map_location=torch.device("cpu"), weights_only=False
+        )
     state = ckpt.get("state_dict", ckpt)
     new_s = {}
     for k, v in state.items():
@@ -167,6 +176,7 @@ class Wav2Lip(Engine):
         self._device = device
         self._model = _load_wav2lip_model(ckpt, device)
         from flickies._vendor.wav2lip import face_detection
+
         # Patch the SFDDetector to read its weights from our managed path.
         self._detector = face_detection.FaceAlignment(
             face_detection.LandmarksType._2D,
@@ -176,6 +186,7 @@ class Wav2Lip(Engine):
         # The SFDDetector defaults to a path next to its own .py. We don't
         # control that path. Symlink our managed weight in if absent.
         from flickies._vendor.wav2lip.face_detection.detection.sfd import sfd_detector as _sfd_mod
+
         default_sfd_path = Path(_sfd_mod.__file__).parent / "s3fd.pth"
         if not default_sfd_path.exists():
             try:
@@ -183,6 +194,7 @@ class Wav2Lip(Engine):
             except OSError:
                 # Fall back to copy if filesystem refuses symlinks.
                 import shutil
+
                 shutil.copy2(s3fd_path, default_sfd_path)
 
     async def unload(self) -> None:
@@ -200,6 +212,7 @@ class Wav2Lip(Engine):
         gc.collect()
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -220,10 +233,16 @@ class Wav2Lip(Engine):
         await self.get_model()
         _log.debug(
             "wav2lip inference start",
-            extra={"engine_slug": self.slug, "face": str(face), "audio": str(audio), "dst": str(dst)},
+            extra={
+                "engine_slug": self.slug,
+                "face": str(face),
+                "audio": str(audio),
+                "dst": str(dst),
+            },
         )
         started = time.monotonic()
         from fastapi import HTTPException
+
         try:
             await asyncio.to_thread(self._lipsync_sync, face, audio, dst)
         except HTTPException:
@@ -254,7 +273,6 @@ class Wav2Lip(Engine):
         """
         import cv2
         import numpy as np
-        import torch
         from tqdm import tqdm
 
         from flickies._vendor.wav2lip import audio as wav_audio
@@ -293,11 +311,19 @@ class Wav2Lip(Engine):
             wav16 = work / "audio.wav"
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", str(audio),
-                    "-strict", "-2",
-                    "-ar", "16000",
-                    "-ac", "1",
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(audio),
+                    "-strict",
+                    "-2",
+                    "-ar",
+                    "16000",
+                    "-ac",
+                    "1",
                     str(wav16),
                 ],
                 check=True,
@@ -307,7 +333,8 @@ class Wav2Lip(Engine):
             mel = wav_audio.melspectrogram(wav)
             if np.isnan(mel.reshape(-1)).sum() > 0:
                 raise http_error(
-                    400, CODE_BAD_REQUEST,
+                    400,
+                    CODE_BAD_REQUEST,
                     "audio mel contains NaN — try a different audio file (TTS output often triggers this)",
                 )
 
@@ -318,9 +345,9 @@ class Wav2Lip(Engine):
             while True:
                 start_idx = int(i * mel_idx_multiplier)
                 if start_idx + _MEL_STEP_SIZE > mel.shape[1]:
-                    mel_chunks.append(mel[:, mel.shape[1] - _MEL_STEP_SIZE:])
+                    mel_chunks.append(mel[:, mel.shape[1] - _MEL_STEP_SIZE :])
                     break
-                mel_chunks.append(mel[:, start_idx:start_idx + _MEL_STEP_SIZE])
+                mel_chunks.append(mel[:, start_idx : start_idx + _MEL_STEP_SIZE])
                 i += 1
 
             # Truncate frames to match mel chunk count (mirrors upstream).
@@ -365,7 +392,11 @@ class Wav2Lip(Engine):
                         continue
 
                     self._flush_batch(
-                        writer, img_batch, mel_batch, frame_batch, coord_batch,
+                        writer,
+                        img_batch,
+                        mel_batch,
+                        frame_batch,
+                        coord_batch,
                     )
                     img_batch, mel_batch, frame_batch, coord_batch = [], [], [], []
             finally:
@@ -374,12 +405,21 @@ class Wav2Lip(Engine):
             # ── mux audio + silent video into final mp4 ────────────────
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", str(silent_out),
-                    "-i", str(audio),
-                    "-c:v", "libx264",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac",
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(silent_out),
+                    "-i",
+                    str(audio),
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "aac",
                     "-shortest",
                     str(dst),
                 ],
@@ -390,12 +430,15 @@ class Wav2Lip(Engine):
     def _detect_faces_batch(self, frames: list[Any]) -> list[Any]:
         import numpy as np
         from tqdm import tqdm
+
         pads_top, pads_bot, pads_left, pads_right = 0, 10, 0, 0
         batch_size = int(self.spec.get("face_det_batch_size", 16))
         results: list[Any] = []
         h, w = frames[0].shape[:2]
+        # Only called from _lipsync_sync, which asserts the same after loading.
+        assert self._detector is not None
         for i in tqdm(range(0, len(frames), batch_size), desc="face-det", disable=True):
-            batch = np.array(frames[i:i + batch_size])
+            batch = np.array(frames[i : i + batch_size])
             try:
                 preds = self._detector.get_detections_for_batch(batch)
             except Exception as e:  # noqa: BLE001
@@ -423,17 +466,20 @@ class Wav2Lip(Engine):
     ) -> None:
         import numpy as np
         import torch
+
         assert self._model is not None
         assert self._device is not None
 
         img_np = np.asarray(img_batch)
         mel_np = np.asarray(mel_batch)
         img_masked = img_np.copy()
-        img_masked[:, _IMG_SIZE // 2:] = 0
+        img_masked[:, _IMG_SIZE // 2 :] = 0
         img_in = np.concatenate((img_masked, img_np), axis=3) / 255.0
 
         img_t = torch.FloatTensor(np.transpose(img_in, (0, 3, 1, 2))).to(self._device)
-        mel_t = torch.FloatTensor(np.transpose(mel_np[..., np.newaxis], (0, 3, 1, 2))).to(self._device)
+        mel_t = torch.FloatTensor(np.transpose(mel_np[..., np.newaxis], (0, 3, 1, 2))).to(
+            self._device
+        )
 
         with torch.no_grad():
             pred = self._model(mel_t, img_t)
@@ -441,7 +487,8 @@ class Wav2Lip(Engine):
         pred = pred.cpu().numpy().transpose(0, 2, 3, 1) * 255.0
 
         import cv2
-        for p, frame, (y1, y2, x1, x2) in zip(pred, frame_batch, coord_batch):
+
+        for p, frame, (y1, y2, x1, x2) in zip(pred, frame_batch, coord_batch, strict=False):
             p = cv2.resize(p.astype(np.uint8), (x2 - x1, y2 - y1))
             frame[y1:y2, x1:x2] = p
             writer.write(frame)

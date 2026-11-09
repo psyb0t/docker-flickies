@@ -10,6 +10,7 @@ Sender pattern from `~/.claude/rule-details/securing-the-app.md`:
 
 Used by JobQueue when `webhook_url` is supplied on async job submit.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +23,6 @@ import time
 from typing import Any
 
 import httpx
-
 
 _log = logging.getLogger("flickies.webhooks")
 
