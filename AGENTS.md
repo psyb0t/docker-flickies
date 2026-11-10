@@ -6,8 +6,6 @@ The project rules live in `.agents/rules/`, one file per topic. They are authori
 
 ## Agent setup
 
-This repository expects the psyb0t rig (`.claude-rig`, or `.codex-rig` once that exists).
-
 `CLAUDE.md` is a committed symlink to `AGENTS.md`, and `.claude` is a committed symlink to `.agents`, so Claude Code reads the same instructions, rules and skills as Codex. Claude's Edit and Write tools refuse to write through a symlink: edit `AGENTS.md` and `.agents/rules/*.md` directly, never the paths under `CLAUDE.md` or `.claude/`.
 
 ## What it is
@@ -131,7 +129,7 @@ Every tool runs in the dev container (`Dockerfile.dev`, tag `psyb0t/flickies-dev
 
 Adding an ffmpeg operation:
 
-1. Add the method to `FFmpeg` in `src/flickies/ffmpeg.py`, running ffmpeg through `_run()` (PY6, SEC6).
+1. Add the method to `FFmpeg` in `src/flickies/ffmpeg.py`, running ffmpeg through `_run()` (PY6).
 2. Add the route in `server.py` through `_ffmpeg_handler()` and the MCP tool in `mcp_server.py` (API3, MCP2).
 3. Add the request schema and path to `openapi.yaml`, run `make generate` (API5), and update `docs/api.md`, `docs/mcp.md`, the README box and the skill (DOC2). The MCP tool count changes too (MCP5).
 
@@ -143,7 +141,7 @@ Adding an engine executor:
 
 Adding a setting: read it where it is used with the existing truthy set or numeric fallback (PY5), and document it in `docs/configuration.md` and `.agents/skills/flickies/references/setup.md` (DOC2).
 
-Releasing: [docs-and-releases.md](.agents/rules/docs-and-releases.md). Never commit, tag, push or publish unless the user asked for that specific action.
+Releasing: [docs-and-releases.md](.agents/rules/docs-and-releases.md).
 
 ## Rules
 
@@ -157,4 +155,4 @@ Rules for every change: `.agents/rules/`. Read the area file before touching tha
 | `mcp.md` | `src/flickies/mcp_server.py`, `.agents/plugins/flickies/`, `server.json` |
 | `security.md` | `src/flickies/auth.py`, `files.py`, `fetch.py`, `webhooks.py`, `logging_config.py`, Dockerfiles, `.github/workflows/`, `.gitleaks.toml`, `THIRD_PARTY.md` |
 | `testing.md` | `tests/`, `Dockerfile.dev`, `Makefile` test targets |
-| `docs-and-releases.md` | `README.md`, `docs/`, `CHANGELOG.md`, `.agents/skills/`, plugin manifests, any version field, commits and tags |
+| `docs-and-releases.md` | `README.md`, `docs/`, `CHANGELOG.md`, `.agents/skills/`, plugin manifests, any version field, release tags |

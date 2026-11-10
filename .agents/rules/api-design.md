@@ -17,7 +17,7 @@ The surface: `GET /healthz`, `GET /v1/health`, `GET /v1/engines`, `DELETE /v1/en
 ## Spec and clients
 
 - **API5:** `openapi.yaml` describes every REST route. A route or field change edits `openapi.yaml` and runs `make generate` in the same change, committing `src/flickies/schema/_generated.py`, `pkg/clients/go/client.gen.go` and `pkg/clients/python/flickies-client/` together; never hand-edit them (`make generate-check` fails on drift). Request schemas that combine `allOf` with sibling `properties` lose those properties in the generated clients (`docs/clients.md`); prefer listing properties in the schema itself for new requests.
-- **API6:** Request bodies are `dict[str, Any]`; the server does not validate them against the spec. When you touch a route, read optional fields with `.get()` and a default, and say in the change if a required field still uses `body["..."]`.
+- **API6:** Request bodies are `dict[str, Any]`; the server does not validate them against the spec. Read optional fields with `.get()` and a default.
 
 ## Jobs, webhooks and headers
 
