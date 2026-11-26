@@ -15,6 +15,7 @@ from .job_status_response_result_type_0 import JobStatusResponseResultType0
 from .job_status_response_status import JobStatusResponseStatus
 from .staged_output_response import StagedOutputResponse
 from .timed_word import TimedWord
+from .unload_result import UnloadResult
 from .url_output_response import UrlOutputResponse
 from .video_analyze_request import VideoAnalyzeRequest
 from .video_compose_request import VideoComposeRequest
@@ -59,6 +60,7 @@ __all__ = (
     "JobStatusResponseStatus",
     "StagedOutputResponse",
     "TimedWord",
+    "UnloadResult",
     "UrlOutputResponse",
     "VideoAnalyzeRequest",
     "VideoComposeRequest",

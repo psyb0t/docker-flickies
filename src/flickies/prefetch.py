@@ -27,6 +27,8 @@ import os
 import sys
 from pathlib import Path
 
+from flickies.config import model_download_mode
+
 _log = logging.getLogger("flickies.prefetch")
 
 
@@ -59,7 +61,7 @@ def _selected_slugs() -> list[str]:
     raw = os.environ.get("FLICKIES_ENABLED_ENGINES", "").strip()
     if raw:
         return [s.strip() for s in raw.split(",") if s.strip()]
-    if _is_set("FLICKIES_PREFETCH_ALL"):
+    if model_download_mode() == "startup" or _is_set("FLICKIES_PREFETCH_ALL"):
         try:
             engines = json.loads(_engines_file().read_text()).get("engines", {})
         except OSError:
@@ -87,9 +89,10 @@ def _prefetch_one(slug: str, spec: dict) -> bool:
             _ensure_wav2lip_weights(weights_file)
             _ensure_s3fd_weights()
         elif executor == "latentsync":
-            from flickies.engines.latentsync import _ensure_weights
+            from flickies.engines.latentsync import _ensure_vae_weights, _ensure_weights
 
             _ensure_weights()
+            _ensure_vae_weights()
         elif executor == "gfpgan":
             from flickies.engines.gfpgan import _ensure_gfpgan_weights
 
@@ -115,6 +118,8 @@ def main() -> int:
     # Tag every prefetch log line with component=prefetch.
     with_scope(component="prefetch")
 
+    if model_download_mode() == "on-demand":
+        return 0
     if _is_set("FLICKIES_OFFLINE"):
         _log.info("prefetch skip: FLICKIES_OFFLINE=1 set", extra={"reason": "offline_mode"})
         return 0

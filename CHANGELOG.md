@@ -6,6 +6,10 @@ out explicitly), patch bumps are docs / build / fixes only.
 
 ## [Unreleased]
 
+- Add `FLICKIES_MODEL_DOWNLOAD` to choose when missing model weights download. Reuse staged weights and cached snapshots before contacting the Hub.
+
+- Add `POST /v1/unload` and stop video model workers on eviction so the API can release their CUDA contexts and model memory.
+
 - Describe every REST operation and add concrete request examples for each video operation.
 - Make Pydantic model generation repeatable by removing the generation timestamp.
 

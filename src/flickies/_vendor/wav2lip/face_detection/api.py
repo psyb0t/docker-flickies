@@ -45,7 +45,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 class FaceAlignment:
     def __init__(self, landmarks_type, network_size=NetworkSize.LARGE,
-                 device='cuda', flip_input=False, face_detector='sfd', verbose=False):
+                 device='cuda', flip_input=False, face_detector='sfd', verbose=False,
+                 detector_path=None):
         self.device = device
         self.flip_input = flip_input
         self.landmarks_type = landmarks_type
@@ -60,7 +61,8 @@ class FaceAlignment:
         if face_detector != "sfd":
             raise ValueError(f"only 'sfd' detector vendored, got {face_detector!r}")
         from .detection.sfd.sfd_detector import SFDDetector
-        self.face_detector = SFDDetector(device=device, verbose=verbose)
+        detector_options = {} if detector_path is None else {'path_to_detector': detector_path}
+        self.face_detector = SFDDetector(device=device, verbose=verbose, **detector_options)
 
     def get_detections_for_batch(self, images):
         images = images[..., ::-1]

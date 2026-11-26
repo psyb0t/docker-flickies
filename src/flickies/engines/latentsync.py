@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from flickies.engines._weights import cached_snapshot
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
 
@@ -42,6 +43,7 @@ _log = logging.getLogger("flickies.engines.latentsync")
 # The training-only files (~3 GB) come along for the ride; the cost is
 # the price of a clean reusable mirror.
 _LATENTSYNC_HF_REPO = "ByteDance/LatentSync-1.5"
+_VAE_HF_REPO = "stabilityai/sd-vae-ft-mse"
 
 
 def _data_dir() -> Path:
@@ -63,13 +65,9 @@ def _ensure_weights() -> Path:
       - config.json
       - plus training blobs we don't use
     """
-    from huggingface_hub import snapshot_download
-
-    _log.info("fetching LatentSync 1.5 via HF snapshot", extra={"repo": _LATENTSYNC_HF_REPO})
     try:
-        snapshot = snapshot_download(
-            repo_id=_LATENTSYNC_HF_REPO,
-            local_files_only=_offline(),
+        return cached_snapshot(
+            _LATENTSYNC_HF_REPO, "latentsync_unet.pt", "whisper/tiny.pt", offline=_offline()
         )
     except Exception as e:  # noqa: BLE001
         raise http_error(
@@ -78,7 +76,12 @@ def _ensure_weights() -> Path:
             f"LatentSync weights unavailable: {e}. Offline mode requires "
             f"the snapshot pre-staged under HF_HOME=/data/hf.",
         ) from e
-    return Path(snapshot)
+
+
+def _ensure_vae_weights() -> Path:
+    return cached_snapshot(
+        _VAE_HF_REPO, "config.json", "diffusion_pytorch_model.safetensors", offline=_offline()
+    )
 
 
 def _config_path() -> Path:
@@ -146,7 +149,7 @@ class LatentSync(Engine):
             audio_feat_length=config.data.audio_feat_length,
         )
 
-        vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse", torch_dtype=self._dtype)
+        vae = AutoencoderKL.from_pretrained(str(_ensure_vae_weights()), torch_dtype=self._dtype)
         vae.config.scaling_factor = 0.18215
         vae.config.shift_factor = 0
 

@@ -60,7 +60,7 @@ Weights live in the standard HuggingFace cache layout under `/data/hf/hub/models
 | `gfpgan` | `leonelhs/gfpgan` | Apache-2.0 | none (CPU and CUDA) |
 | S3FD detector | `ByteDance/LatentSync-1.5` (bundled) | — | — |
 
-**Lazy by default** — each engine fetches its repo on first request. To pull at boot before the server accepts requests, set `FLICKIES_ENABLED_ENGINES=wav2lip,gfpgan` (prefetch just those) or `FLICKIES_PREFETCH_ALL=1` (prefetch all; CUDA engines pulled only when the device is CUDA). `FLICKIES_OFFLINE=1` skips auto-download entirely (operator stages the snapshot dir manually).
+Flickies fetches engine checkpoints on first use by default. Set `FLICKIES_MODEL_DOWNLOAD=startup` to fetch checkpoints at boot. Set `FLICKIES_ENABLED_ENGINES` to limit the engines. GFPGAN and LatentSync can still fetch their auxiliary face models when they first run.
 
 ## Environment Variables
 
@@ -80,6 +80,7 @@ All server-side (set at `docker run` time). Everything defaults sensibly; the tw
 | Var | Default | What it does |
 |---|---|---|
 | `FLICKIES_ENGINES_FILE` | `/app/engines.json` | Path to the engine registry JSON. Override to ship a custom subset. |
+| `FLICKIES_MODEL_DOWNLOAD` | unset | Set `startup` to fetch missing weights before serving or `on-demand` to skip boot downloads. |
 | `FLICKIES_ENABLED_ENGINES` | (empty = none at boot) | Comma-separated engine slugs to prefetch at boot. Empty: each engine downloads on its first request. It does not limit which engines can be used. |
 | `FLICKIES_PREFETCH_ALL` | (unset) | `1` → prefetch every engine in `engines.json` at boot (CUDA engines only when the device is CUDA). |
 | `FLICKIES_OFFLINE` | (unset) | `1` → skip prefetch; weights must be staged manually. |

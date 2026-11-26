@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from flickies.engines._license_gate import require_noncommercial_optin
+from flickies.engines._weights import cached_snapshot
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
 
@@ -79,16 +80,7 @@ def _ensure_s3fd_weights() -> Path:
     legacy = _models_dir() / "s3fd-619a316812.pth"
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
-    from huggingface_hub import snapshot_download
-
-    _log.info("fetching S3FD via HF snapshot", extra={"repo": _S3FD_HF_REPO})
-    snap = Path(
-        snapshot_download(
-            repo_id=_S3FD_HF_REPO,
-            local_files_only=_offline(),
-        )
-    )
-    return snap / _S3FD_HF_FILE
+    return cached_snapshot(_S3FD_HF_REPO, _S3FD_HF_FILE, offline=_offline()) / _S3FD_HF_FILE
 
 
 def _ensure_wav2lip_weights(weights_file: str) -> Path:
@@ -103,16 +95,8 @@ def _ensure_wav2lip_weights(weights_file: str) -> Path:
     legacy = _models_dir() / weights_file
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
-    from huggingface_hub import snapshot_download
-
-    _log.info("fetching wav2lip via HF snapshot", extra={"repo": _WAV2LIP_HF_REPO})
     try:
-        snap = Path(
-            snapshot_download(
-                repo_id=_WAV2LIP_HF_REPO,
-                local_files_only=_offline(),
-            )
-        )
+        snap = cached_snapshot(_WAV2LIP_HF_REPO, weights_file, offline=_offline())
     except Exception as e:  # noqa: BLE001
         raise http_error(
             400,
@@ -177,25 +161,12 @@ class Wav2Lip(Engine):
         self._model = _load_wav2lip_model(ckpt, device)
         from flickies._vendor.wav2lip import face_detection
 
-        # Patch the SFDDetector to read its weights from our managed path.
         self._detector = face_detection.FaceAlignment(
             face_detection.LandmarksType._2D,
             flip_input=False,
             device=device,
+            detector_path=str(s3fd_path),
         )
-        # The SFDDetector defaults to a path next to its own .py. We don't
-        # control that path. Symlink our managed weight in if absent.
-        from flickies._vendor.wav2lip.face_detection.detection.sfd import sfd_detector as _sfd_mod
-
-        default_sfd_path = Path(_sfd_mod.__file__).parent / "s3fd.pth"
-        if not default_sfd_path.exists():
-            try:
-                default_sfd_path.symlink_to(s3fd_path)
-            except OSError:
-                # Fall back to copy if filesystem refuses symlinks.
-                import shutil
-
-                shutil.copy2(s3fd_path, default_sfd_path)
 
     async def unload(self) -> None:
         if self._model is None:

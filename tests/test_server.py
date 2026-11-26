@@ -8,17 +8,23 @@ and the non-commercial gate refusal.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
+import os
 import shutil
 import subprocess
 import time
 import zipfile
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+
+from flickies.engines.base import Engine
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -53,6 +59,74 @@ def test_v1_health_shape(app_client: TestClient) -> None:
     assert "wav2lip" in body["available_engines"]
 
 
+class BlockingRestore(Engine):
+    def __init__(self, slug: str, **spec):
+        super().__init__(slug, **spec)
+        self.ready = False
+
+    def loaded(self) -> bool:
+        return self.ready
+
+    async def health(self) -> dict:
+        return {"loaded": self.ready}
+
+    async def restore(self, src: Path, dst: Path) -> None:
+        if src.name == "invalid.mp4":
+            raise HTTPException(status_code=400, detail="invalid test video")
+        self.ready = True
+        src.with_name("worker-started").touch()
+        deadline = time.monotonic() + 5
+        while not src.with_name("worker-release").exists():
+            if time.monotonic() >= deadline:
+                raise TimeoutError("worker test was not released")
+            await asyncio.sleep(0.01)
+        dst.write_text(str(os.getpid()))
+
+
+def test_unload_conflict_and_worker_exit(monkeypatch, tmp_path: Path) -> None:
+    from flickies import server
+
+    monkeypatch.setenv("FLICKIES_ENGINES_FILE", str(REPO_ROOT / "engines.json"))
+    monkeypatch.setenv("FLICKIES_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("FLICKIES_AUTH_TOKEN", raising=False)
+    monkeypatch.setitem(server._EXECUTOR_MAP, "gfpgan", BlockingRestore)
+
+    with TestClient(server.build_app()) as client, ThreadPoolExecutor(max_workers=1) as threads:
+        assert client.post("/v1/unload").json() == {"unloaded": []}
+        assert client.put("/v1/files/invalid.mp4", content=b"invalid").status_code == 201
+        invalid = client.post(
+            "/v1/video/restore",
+            json={"file_path": "invalid.mp4", "output_path": "output.mp4"},
+        )
+        assert invalid.status_code == 400
+        assert invalid.json()["message"] == "invalid test video"
+        assert client.put("/v1/files/input.mp4", content=b"test").status_code == 201
+        future = threads.submit(
+            client.post,
+            "/v1/video/restore",
+            json={"file_path": "input.mp4", "output_path": "output.mp4"},
+        )
+        files = tmp_path / "files"
+        try:
+            for _ in range(500):
+                if (files / "worker-started").exists():
+                    break
+                time.sleep(0.01)
+            assert (files / "worker-started").exists()
+            assert client.post("/v1/unload").status_code == 409
+            assert client.delete("/v1/engines/gfpgan").status_code == 409
+        finally:
+            (files / "worker-release").touch()
+
+        assert future.result(timeout=5).status_code == 200
+        pid = int(client.get("/v1/files/output.mp4").content)
+        assert pid != os.getpid()
+        assert client.post("/v1/unload").json() == {"unloaded": ["gfpgan"]}
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+        assert client.post("/v1/unload").json() == {"unloaded": []}
+
+
 def test_list_engines(app_client: TestClient) -> None:
     r = app_client.get("/v1/engines")
     assert r.status_code == 200
@@ -73,6 +147,7 @@ def test_auth_blocks_without_token(monkeypatch, tmp_path: Path) -> None:
     r = c.get("/v1/health")
     assert r.status_code == 401
     assert r.json()["code"] == "UNAUTHORIZED"
+    assert c.post("/v1/unload").status_code == 401
 
     # /healthz is still open.
     assert c.get("/healthz").status_code == 200

@@ -10,6 +10,12 @@ from uuid import UUID
 from pydantic import AnyUrl, BaseModel, Field
 
 
+class UnloadResult(BaseModel):
+    unloaded: Annotated[
+        list[str], Field(description='Slugs of the engines released by this request.')
+    ]
+
+
 class ErrorBody(BaseModel):
     code: Annotated[
         str,
@@ -20,6 +26,7 @@ class ErrorBody(BaseModel):
                 'UNAUTHORIZED',
                 'NOT_FOUND',
                 'NONCOMMERCIAL_GATE_REFUSED',
+                'ENGINE_BUSY',
                 'VALIDATION_FAILED',
                 'INTERNAL_SERVER_ERROR',
             ],

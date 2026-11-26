@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from flickies.engines._weights import cached_snapshot
 from flickies.engines.base import Engine
 from flickies.errors import CODE_BAD_REQUEST, CODE_INTERNAL, http_error
 
@@ -73,16 +74,8 @@ def _ensure_gfpgan_weights() -> Path:
     legacy = _models_dir() / _GFPGAN_HF_FILE
     if legacy.is_file() and legacy.stat().st_size > 0:
         return legacy
-    from huggingface_hub import snapshot_download
-
-    _log.info("fetching gfpgan via HF snapshot", extra={"repo": _GFPGAN_HF_REPO})
     try:
-        snap = Path(
-            snapshot_download(
-                repo_id=_GFPGAN_HF_REPO,
-                local_files_only=_offline(),
-            )
-        )
+        snap = cached_snapshot(_GFPGAN_HF_REPO, _GFPGAN_HF_FILE, offline=_offline())
     except Exception as e:  # noqa: BLE001
         raise http_error(
             400,

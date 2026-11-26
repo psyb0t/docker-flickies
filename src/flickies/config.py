@@ -30,7 +30,15 @@ def _env_bool(key: str) -> bool:
     return os.environ.get(key, "").strip().lower() in _TRUTHY
 
 
+def model_download_mode() -> str:
+    mode = _env("FLICKIES_MODEL_DOWNLOAD", "")
+    if mode and mode not in {"startup", "on-demand"}:
+        raise ValueError("FLICKIES_MODEL_DOWNLOAD must be startup or on-demand")
+    return mode
+
+
 def load() -> Config:
+    model_download_mode()
     engines_file = Path(_env("FLICKIES_ENGINES_FILE", "/app/engines.json"))
     if not engines_file.is_file():
         raise FileNotFoundError(f"engines file not found: {engines_file}")

@@ -10,10 +10,7 @@ One GPU pool, one resident engine at a time. Audiolla/talkies pattern:
   - ffmpeg / ffprobe are NOT engines — they're plain singletons attached
     to `app.state.ffmpeg`. The registry only manages the ML pool.
 
-The registry is process-global. FastAPI handlers call
-``await registry.acquire(slug)`` → get the warm Engine instance → call its
-capability method. The lock around acquire serialises hot-swaps so two
-concurrent requests for different models can't race.
+The registry holds its lock through inference and model eviction.
 """
 
 from __future__ import annotations
@@ -23,8 +20,10 @@ import contextlib
 import logging
 import os
 from collections.abc import Iterable
+from typing import Any
 
 from flickies.engines.base import Engine
+from flickies.errors import EngineBusy
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +52,7 @@ class Registry:
     def __init__(self) -> None:
         self._engines: dict[str, Engine] = {}
         self._loaded_slug: str | None = None
+        self._active = 0
         self._swap_lock = asyncio.Lock()
         self._sweeper_task: asyncio.Task[None] | None = None
 
@@ -73,57 +73,47 @@ class Registry:
         return tuple(self._engines.keys())
 
     def loaded_slug(self) -> str | None:
-        return self._loaded_slug
+        slug = self._loaded_slug
+        return slug if slug is not None and self.get(slug).loaded() else None
 
-    # ── acquire (hot-swap eviction) ────────────────────────────────────
-    async def acquire(self, slug: str) -> Engine:
-        """Return the requested Engine, loaded and ready.
-
-        If a different slug is currently resident, evict it first.
-        """
-        eng = self.get(slug)
-        async with self._swap_lock:
-            current = self._loaded_slug
-            if current is not None and current != slug:
-                old = self._engines.get(current)
-                if old is not None and old.loaded():
-                    log.info(
-                        "hot-swap eviction",
-                        extra={
-                            "engine_slug": current,
-                            "requested": slug,
-                            "reason": "different_engine_requested",
-                        },
-                    )
-                    await old.unload()
-                self._loaded_slug = None
-            await eng.get_model()
-            if eng.loaded():
+    async def run(self, slug: str, operation: str, *args: Any) -> None:
+        engine = self.get(slug)
+        self._active += 1
+        try:
+            async with self._swap_lock:
+                current = self._loaded_slug
+                if current is not None and current != slug:
+                    await self.get(current).unload()
                 self._loaded_slug = slug
-        return eng
+                await engine.run(operation, *args)
+        finally:
+            self._active -= 1
 
-    # ── sweeper ────────────────────────────────────────────────────────
+    async def unload(self, slug: str | None = None) -> list[str]:
+        engines = [self.get(slug)] if slug is not None else list(self._engines.values())
+        if self._active or self._swap_lock.locked():
+            raise EngineBusy("a video engine is busy")
+        async with self._swap_lock:
+            unloaded = [engine.slug for engine in engines if engine.loaded()]
+            for engine in engines:
+                await engine.unload()
+                if self._loaded_slug == engine.slug:
+                    self._loaded_slug = None
+        return unloaded
+
+    async def close(self) -> None:
+        async with self._swap_lock:
+            for engine in self._engines.values():
+                await engine.unload()
+
     async def _sweep_once(self) -> None:
         threshold = _idle_unload_secs()
-        for slug, eng in list(self._engines.items()):
-            if not eng.loaded():
-                continue
-            idle = eng.last_used_secs_ago()
-            if idle is None:
-                continue
-            if idle >= threshold:
-                log.info(
-                    "idle eviction",
-                    extra={
-                        "engine_slug": slug,
-                        "idle_secs": idle,
-                        "threshold_secs": threshold,
-                        "reason": "idle_timeout",
-                    },
-                )
-                await eng.unload()
-                if self._loaded_slug == slug:
-                    self._loaded_slug = None
+        slug = self._loaded_slug
+        if self._active or self._swap_lock.locked() or slug is None:
+            return
+        idle = self.get(slug).last_used_secs_ago()
+        if idle is not None and idle >= threshold:
+            await self.unload(slug)
 
     async def _sweep_loop(self) -> None:
         interval = _sweep_interval_secs()

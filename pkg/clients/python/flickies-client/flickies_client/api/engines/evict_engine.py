@@ -26,6 +26,10 @@ def _parse_response(
     if response.status_code == 204:
         response_204 = cast(Any, None)
         return response_204
+    if response.status_code == 409:
+        response_409 = ErrorBody.from_dict(response.json())
+
+        return response_409
     if response.status_code == 401:
         response_401 = ErrorBody.from_dict(response.json())
 

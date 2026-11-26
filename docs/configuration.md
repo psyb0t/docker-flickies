@@ -23,6 +23,7 @@ Boolean settings are on when the value is `1`, `true`, `yes` or `on` (any case).
 | --- | --- | --- |
 | `FLICKIES_DEVICE` | `auto` | `auto` uses CUDA when torch sees a GPU, else the CPU. `cpu` and `cuda` force it. LatentSync 1.5 needs CUDA whatever this says. |
 | `FLICKIES_ENGINES_FILE` | `/app/engines.json` | The engine registry. The server refuses to start if the file is missing. |
+| `FLICKIES_MODEL_DOWNLOAD` | unset | Use `startup` to fetch missing engine checkpoints before serving and `on-demand` to fetch them on first use. If you set `startup` without an engine list, Flickies selects engines compatible with the device and license settings. Leave it unset to keep the existing prefetch rules. GFPGAN and LatentSync may still fetch auxiliary face models on first use. |
 | `FLICKIES_ENABLED_ENGINES` | empty | Comma-separated slugs to download at boot. It does not limit which engines can be used. |
 | `FLICKIES_PREFETCH_ALL` | off | Download every engine at boot when `FLICKIES_ENABLED_ENGINES` is empty. CUDA-only engines are skipped without a GPU. |
 | `FLICKIES_OFFLINE` | off | Skip the boot prefetch and load weights from local files only. See [Deployment](deployment.md#offline-hosts). |

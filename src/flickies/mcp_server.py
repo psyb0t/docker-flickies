@@ -181,11 +181,9 @@ def build_mcp_server(
             audio = resolve_safe(files_dir(cfg.data_dir), audio_path)
         try:
             try:
-                eng = await registry.acquire(engine)
+                await registry.run(engine, "lipsync", face, audio, dst)
             except EngineNotRegistered as e:
                 raise ValueError(f"unknown engine: {engine}") from e
-            try:
-                await eng.lipsync(face, audio, dst)  # type: ignore[attr-defined]
             except NonCommercialOptInRequired as e:
                 raise ValueError(str(e)) from e
         finally:
@@ -200,9 +198,8 @@ def build_mcp_server(
         # hot-swap eviction of the lipsync model, which is desired (frees VRAM).
         if restore_face:
             try:
-                gfp = await registry.acquire("gfpgan")
                 tmp_out = dst.with_suffix(".restored.mp4")
-                await gfp.restore(dst, tmp_out)  # type: ignore[attr-defined]
+                await registry.run("gfpgan", "restore", dst, tmp_out)
                 tmp_out.replace(dst)
             except EngineNotRegistered:
                 pass
@@ -220,10 +217,9 @@ def build_mcp_server(
         src, is_tmp = await _resolve_video(file_path, file_url)
         try:
             try:
-                eng = await registry.acquire("gfpgan")
+                await registry.run("gfpgan", "restore", src, dst)
             except EngineNotRegistered as e:
                 raise ValueError("gfpgan engine not registered") from e
-            await eng.restore(src, dst)  # type: ignore[attr-defined]
         finally:
             if is_tmp:
                 with contextlib.suppress(OSError):

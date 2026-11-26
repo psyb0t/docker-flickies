@@ -32,18 +32,25 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from flickies import __version__
 from flickies.auth import BearerAuthMiddleware
 from flickies.config import Config, load
-from flickies.engines._license_gate import NonCommercialOptInRequired, noncommercial_enabled
+from flickies.engines._license_gate import (
+    NonCommercialOptInRequired,
+    noncommercial_enabled,
+    require_noncommercial_optin,
+)
 from flickies.engines._registry import EngineNotRegistered, Registry
+from flickies.engines._worker import WorkerEngine
 from flickies.engines.gfpgan import GFPGAN
 from flickies.engines.latentsync import LatentSync
 from flickies.engines.wav2lip import Wav2Lip
 from flickies.errors import (
     CODE_BAD_REQUEST,
+    CODE_ENGINE_BUSY,
     CODE_ENGINE_NOT_REGISTERED,
     CODE_INTERNAL,
     CODE_NONCOMMERCIAL_GATE_REFUSED,
     CODE_NOT_FOUND,
     CODE_VALIDATION_FAILED,
+    EngineBusy,
     http_error,
 )
 from flickies.fetch import fetch_to_temp, loggable_url, put_file
@@ -103,7 +110,7 @@ def _build_registry(cfg: Config) -> Registry:
                 },
             )
             continue
-        r.register(cls(slug=slug, **spec))
+        r.register(WorkerEngine(cls, slug, **spec))
     return r
 
 
@@ -229,6 +236,7 @@ def build_app() -> FastAPI:
                 yield
         finally:
             await registry.stop_sweeper()
+            await registry.close()
 
     app = FastAPI(title="flickies", version=__version__, lifespan=lifespan)
     app.state.cfg = cfg
@@ -363,11 +371,19 @@ def build_app() -> FastAPI:
     @app.delete("/v1/engines/{slug}")
     async def evict_engine(slug: str) -> Response:
         try:
-            eng = registry.get(slug)
+            await registry.unload(slug)
         except EngineNotRegistered as e:
             raise http_error(404, CODE_ENGINE_NOT_REGISTERED, str(e)) from e
-        await eng.unload()
+        except EngineBusy as e:
+            raise http_error(409, CODE_ENGINE_BUSY, str(e)) from e
         return Response(status_code=204)
+
+    @app.post("/v1/unload")
+    async def unload_all() -> dict[str, list[str]]:
+        try:
+            return {"unloaded": await registry.unload()}
+        except EngineBusy as e:
+            raise http_error(409, CODE_ENGINE_BUSY, str(e)) from e
 
     # ── /v1/files/{path} (PUT / GET / DELETE) ──────────────────────────
     @app.put("/v1/files/{path:path}", status_code=201)
@@ -473,55 +489,55 @@ def build_app() -> FastAPI:
     async def post_lipsync(body: dict[str, Any]) -> JSONResponse:
         engine_slug = body.get("engine") or "latentsync-1.5"
         try:
-            eng = await registry.acquire(engine_slug)
+            engine = registry.get(engine_slug)
         except EngineNotRegistered as e:
             raise http_error(404, CODE_ENGINE_NOT_REGISTERED, str(e)) from e
 
-        face_tmp_to_clean: list[Path] = []
+        if engine.spec.get("noncommercial"):
+            require_noncommercial_optin(engine_slug)
 
         async def work(out: Path) -> None:
-            face, face_tmp = await _resolve_input(
-                cfg,
-                file_path=body.get("face_path"),
-                file_url=body.get("face_url"),
-                suffix=".mp4",
-            )
-            if face_tmp:
-                face_tmp_to_clean.append(face)
-            audio_path = body.get("audio_path")
-            audio_url = body.get("audio_url")
-            n_audio = int(bool(audio_path)) + int(bool(audio_url))
-            if n_audio != 1:
-                raise http_error(
-                    400,
-                    CODE_BAD_REQUEST,
-                    "must provide exactly one of: audio_path, audio_url",
+            face_tmp_to_clean: list[Path] = []
+            try:
+                face, face_tmp = await _resolve_input(
+                    cfg,
+                    file_path=body.get("face_path"),
+                    file_url=body.get("face_url"),
+                    suffix=".mp4",
                 )
-            if audio_url:
-                audio = await fetch_to_temp(audio_url, suffix=".wav")
-                face_tmp_to_clean.append(audio)
-            else:
-                assert audio_path is not None
-                audio = resolve_safe(files_dir(cfg.data_dir), audio_path)
-            await eng.lipsync(face, audio, out)  # type: ignore[attr-defined]
+                if face_tmp:
+                    face_tmp_to_clean.append(face)
+                audio_path = body.get("audio_path")
+                audio_url = body.get("audio_url")
+                n_audio = int(bool(audio_path)) + int(bool(audio_url))
+                if n_audio != 1:
+                    raise http_error(
+                        400,
+                        CODE_BAD_REQUEST,
+                        "must provide exactly one of: audio_path, audio_url",
+                    )
+                if audio_url:
+                    audio = await fetch_to_temp(audio_url, suffix=".wav")
+                    face_tmp_to_clean.append(audio)
+                else:
+                    assert audio_path is not None
+                    audio = resolve_safe(files_dir(cfg.data_dir), audio_path)
+                await registry.run(engine_slug, "lipsync", face, audio, out)
+            finally:
+                for path in face_tmp_to_clean:
+                    with suppress(OSError):
+                        path.unlink()
 
-        try:
-            status, payload = await _run_or_schedule(body, "mp4", work)
-        finally:
-            for p in face_tmp_to_clean:
-                with suppress(OSError):
-                    p.unlink()
+        status, payload = await _run_or_schedule(body, "mp4", work)
         return JSONResponse(status_code=status, content=payload)
 
     # ── /v1/video/restore (GFPGAN) ─────────────────────────────────────
     @app.post("/v1/video/restore")
     async def post_restore(body: dict[str, Any]) -> JSONResponse:
         try:
-            eng = await registry.acquire("gfpgan")
+            registry.get("gfpgan")
         except EngineNotRegistered as e:
             raise http_error(404, CODE_ENGINE_NOT_REGISTERED, str(e)) from e
-
-        tmp_to_clean: list[Path] = []
 
         async def work(out: Path) -> None:
             src, is_tmp = await _resolve_input(
@@ -529,16 +545,14 @@ def build_app() -> FastAPI:
                 file_path=body.get("file_path"),
                 file_url=body.get("file_url"),
             )
-            if is_tmp:
-                tmp_to_clean.append(src)
-            await eng.restore(src, out)  # type: ignore[attr-defined]
+            try:
+                await registry.run("gfpgan", "restore", src, out)
+            finally:
+                if is_tmp:
+                    with suppress(OSError):
+                        src.unlink()
 
-        try:
-            status, payload = await _run_or_schedule(body, "mp4", work)
-        finally:
-            for p in tmp_to_clean:
-                with suppress(OSError):
-                    p.unlink()
+        status, payload = await _run_or_schedule(body, "mp4", work)
         return JSONResponse(status_code=status, content=payload)
 
     # ── helper for ffmpeg-driven routes (uses the singleton, not registry) ──

@@ -27,6 +27,9 @@ class Engine(ABC):
     async def get_model(self) -> Any:
         return None
 
+    async def run(self, operation: str, *args: Any) -> None:
+        await getattr(self, operation)(*args)
+
     async def unload(self) -> None:
         return None
 

@@ -294,6 +294,12 @@ type TimedWord struct {
 	Text string `json:"text"`
 }
 
+// UnloadResult defines model for UnloadResult.
+type UnloadResult struct {
+	// Unloaded Slugs of the engines released by this request.
+	Unloaded []string `json:"unloaded"`
+}
+
 // UrlOutputResponse defines model for UrlOutputResponse.
 type UrlOutputResponse struct {
 	// Sha256 SHA-256 checksum of the output bytes.
@@ -853,6 +859,9 @@ type N413 = ErrorBody
 // N422 defines model for 422.
 type N422 = ErrorBody
 
+// EngineBusy defines model for EngineBusy.
+type EngineBusy = ErrorBody
+
 // PostVideoAnalyzeJSONRequestBody defines body for PostVideoAnalyze for application/json ContentType.
 type PostVideoAnalyzeJSONRequestBody = VideoAnalyzeRequest
 
@@ -997,6 +1006,9 @@ type ClientInterface interface {
 
 	// GetJob request
 	GetJob(ctx context.Context, jobId JobIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnloadAllEngines request
+	UnloadAllEngines(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostVideoAnalyzeWithBody request with any body
 	PostVideoAnalyzeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1158,6 +1170,18 @@ func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (
 
 func (c *Client) GetJob(ctx context.Context, jobId JobIdPath, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetJobRequest(c.Server, jobId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UnloadAllEngines(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnloadAllEnginesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1795,6 +1819,33 @@ func NewGetJobRequest(server string, jobId JobIdPath) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUnloadAllEnginesRequest generates requests for UnloadAllEngines
+func NewUnloadAllEnginesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/unload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2546,6 +2597,9 @@ type ClientWithResponsesInterface interface {
 	// GetJobWithResponse request
 	GetJobWithResponse(ctx context.Context, jobId JobIdPath, reqEditors ...RequestEditorFn) (*GetJobHTTPResponse, error)
 
+	// UnloadAllEnginesWithResponse request
+	UnloadAllEnginesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UnloadAllEnginesHTTPResponse, error)
+
 	// PostVideoAnalyzeWithBodyWithResponse request with any body
 	PostVideoAnalyzeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error)
 
@@ -2660,6 +2714,7 @@ type EvictEngineHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *N401
 	JSON404      *N404
+	JSON409      *EngineBusy
 }
 
 // Status returns HTTPResponse.Status
@@ -2788,6 +2843,30 @@ func (r GetJobHTTPResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetJobHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UnloadAllEnginesHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UnloadResult
+	JSON401      *N401
+	JSON409      *EngineBusy
+}
+
+// Status returns HTTPResponse.Status
+func (r UnloadAllEnginesHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnloadAllEnginesHTTPResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3317,6 +3396,15 @@ func (c *ClientWithResponses) GetJobWithResponse(ctx context.Context, jobId JobI
 	return ParseGetJobHTTPResponse(rsp)
 }
 
+// UnloadAllEnginesWithResponse request returning *UnloadAllEnginesHTTPResponse
+func (c *ClientWithResponses) UnloadAllEnginesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UnloadAllEnginesHTTPResponse, error) {
+	rsp, err := c.UnloadAllEngines(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnloadAllEnginesHTTPResponse(rsp)
+}
+
 // PostVideoAnalyzeWithBodyWithResponse request with arbitrary body returning *PostVideoAnalyzeHTTPResponse
 func (c *ClientWithResponses) PostVideoAnalyzeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error) {
 	rsp, err := c.PostVideoAnalyzeWithBody(ctx, contentType, body, reqEditors...)
@@ -3667,6 +3755,13 @@ func ParseEvictEngineHTTPResponse(rsp *http.Response) (*EvictEngineHTTPResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest EngineBusy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	}
 
 	return response, nil
@@ -3838,6 +3933,46 @@ func ParseGetJobHTTPResponse(rsp *http.Response) (*GetJobHTTPResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnloadAllEnginesHTTPResponse parses an HTTP response from a UnloadAllEnginesWithResponse call
+func ParseUnloadAllEnginesHTTPResponse(rsp *http.Response) (*UnloadAllEnginesHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnloadAllEnginesHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UnloadResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest EngineBusy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

@@ -79,7 +79,11 @@ Lists every registered engine:
 
 ### `DELETE /v1/engines/{slug}`
 
-Unloads the engine and frees its memory. 204 whether or not it was loaded, 404 `ENGINE_NOT_REGISTERED` for an unknown slug. After this, `loaded_engine` in `/v1/health` can still name the engine until another one loads; `loaded` in `/v1/engines` is the real state. Evicting an engine another caller is using breaks their request.
+Stops the selected engine's worker and frees its memory. Returns 204 when the engine is idle, 404 for an unknown slug, or 409 while inference is active.
+
+### `POST /v1/unload`
+
+Stops all resident inference workers and returns their slugs in `unloaded`. An idle service returns an empty list. The API returns 409 `ENGINE_BUSY` while an engine is in use.
 
 ## Files
 
@@ -365,6 +369,7 @@ Errors are JSON:
 | 403 | `NONCOMMERCIAL_GATE_REFUSED` | A Wav2Lip engine without `FLICKIES_ENABLE_NONCOMMERCIAL`. |
 | 404 | `NOT_FOUND` | File, job or route not found. |
 | 404 | `ENGINE_NOT_REGISTERED` | Engine slug not in the registry. |
+| 409 | `ENGINE_BUSY` | A model is in use or being unloaded. |
 | 413 | `PAYLOAD_TOO_LARGE` | Upload over `FLICKIES_MAX_UPLOAD_BYTES`. |
 | 422 | `VALIDATION_FAILED` | The body is not valid JSON, or not a JSON object. `details.errors` lists the problems. |
 | 429 | `RATE_LIMITED` | Over `FLICKIES_RATE_LIMIT_PER_MIN`. Comes with `Retry-After: 60`. |
