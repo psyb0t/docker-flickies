@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -33,18 +33,18 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     if response.status_code == 200:
 
-        def _parse_response_200(data: object) -> StagedOutputResponse | UrlOutputResponse:
+        def _parse_response_200(data: object) -> Union["StagedOutputResponse", "UrlOutputResponse"]:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
                 response_200_type_0 = StagedOutputResponse.from_dict(data)
 
                 return response_200_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
+            except:  # noqa: E722
                 pass
             if not isinstance(data, dict):
                 raise TypeError()
@@ -55,32 +55,26 @@ def _parse_response(
         response_200 = _parse_response_200(response.json())
 
         return response_200
-
     if response.status_code == 202:
         response_202 = JobAcceptedResponse.from_dict(response.json())
 
         return response_202
-
     if response.status_code == 400:
         response_400 = ErrorBody.from_dict(response.json())
 
         return response_400
-
     if response.status_code == 401:
         response_401 = ErrorBody.from_dict(response.json())
 
         return response_401
-
     if response.status_code == 403:
         response_403 = ErrorBody.from_dict(response.json())
 
         return response_403
-
     if response.status_code == 422:
         response_422 = ErrorBody.from_dict(response.json())
 
         return response_422
-
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -88,8 +82,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -100,9 +94,9 @@ def _build_response(
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
-) -> Response[ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse]:
+) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     """Drive a face from an audio track.
 
     Args:
@@ -114,7 +108,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse]
+        Response[Union[ErrorBody, JobAcceptedResponse, Union['StagedOutputResponse', 'UrlOutputResponse']]]
     """
 
     kwargs = _get_kwargs(
@@ -130,9 +124,9 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
-) -> ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse | None:
+) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     """Drive a face from an audio track.
 
     Args:
@@ -144,7 +138,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse
+        Union[ErrorBody, JobAcceptedResponse, Union['StagedOutputResponse', 'UrlOutputResponse']]
     """
 
     return sync_detailed(
@@ -155,9 +149,9 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
-) -> Response[ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse]:
+) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     """Drive a face from an audio track.
 
     Args:
@@ -169,7 +163,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse]
+        Response[Union[ErrorBody, JobAcceptedResponse, Union['StagedOutputResponse', 'UrlOutputResponse']]]
     """
 
     kwargs = _get_kwargs(
@@ -183,9 +177,9 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
-) -> ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse | None:
+) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
     """Drive a face from an audio track.
 
     Args:
@@ -197,7 +191,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | JobAcceptedResponse | StagedOutputResponse | UrlOutputResponse
+        Union[ErrorBody, JobAcceptedResponse, Union['StagedOutputResponse', 'UrlOutputResponse']]
     """
 
     return (

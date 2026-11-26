@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 from uuid import UUID
 
 from attrs import define as _attrs_define
@@ -24,14 +22,14 @@ class JobStatusResponse:
     Attributes:
         job_id (UUID):
         status (JobStatusResponseStatus):
-        result (JobStatusResponseResultType0 | None | Unset):
-        error (JobStatusResponseErrorType0 | None | Unset):
+        result (Union['JobStatusResponseResultType0', None, Unset]):
+        error (Union['JobStatusResponseErrorType0', None, Unset]):
     """
 
     job_id: UUID
     status: JobStatusResponseStatus
-    result: JobStatusResponseResultType0 | None | Unset = UNSET
-    error: JobStatusResponseErrorType0 | None | Unset = UNSET
+    result: Union["JobStatusResponseResultType0", None, Unset] = UNSET
+    error: Union["JobStatusResponseErrorType0", None, Unset] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -42,7 +40,7 @@ class JobStatusResponse:
 
         status = self.status.value
 
-        result: dict[str, Any] | None | Unset
+        result: Union[None, Unset, dict[str, Any]]
         if isinstance(self.result, Unset):
             result = UNSET
         elif isinstance(self.result, JobStatusResponseResultType0):
@@ -50,7 +48,7 @@ class JobStatusResponse:
         else:
             result = self.result
 
-        error: dict[str, Any] | None | Unset
+        error: Union[None, Unset, dict[str, Any]]
         if isinstance(self.error, Unset):
             error = UNSET
         elif isinstance(self.error, JobStatusResponseErrorType0):
@@ -83,7 +81,7 @@ class JobStatusResponse:
 
         status = JobStatusResponseStatus(d.pop("status"))
 
-        def _parse_result(data: object) -> JobStatusResponseResultType0 | None | Unset:
+        def _parse_result(data: object) -> Union["JobStatusResponseResultType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -94,13 +92,13 @@ class JobStatusResponse:
                 result_type_0 = JobStatusResponseResultType0.from_dict(data)
 
                 return result_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
+            except:  # noqa: E722
                 pass
-            return cast(JobStatusResponseResultType0 | None | Unset, data)
+            return cast(Union["JobStatusResponseResultType0", None, Unset], data)
 
         result = _parse_result(d.pop("result", UNSET))
 
-        def _parse_error(data: object) -> JobStatusResponseErrorType0 | None | Unset:
+        def _parse_error(data: object) -> Union["JobStatusResponseErrorType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -111,9 +109,9 @@ class JobStatusResponse:
                 error_type_0 = JobStatusResponseErrorType0.from_dict(data)
 
                 return error_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
+            except:  # noqa: E722
                 pass
-            return cast(JobStatusResponseErrorType0 | None | Unset, data)
+            return cast(Union["JobStatusResponseErrorType0", None, Unset], data)
 
         error = _parse_error(d.pop("error", UNSET))
 

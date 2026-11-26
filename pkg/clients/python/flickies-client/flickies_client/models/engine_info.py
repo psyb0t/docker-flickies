@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -19,22 +17,23 @@ class EngineInfo:
         executor (str):
         loaded (bool):
         noncommercial (bool):
-        variant (None | str | Unset):
-        cuda_only (bool | Unset):
-        vram_gb_min (float | None | Unset):
-        description (str | Unset):
-        last_used_secs_ago (float | None | Unset): Seconds since this engine last served a request; null if never used.
+        variant (Union[None, Unset, str]):
+        cuda_only (Union[Unset, bool]):
+        vram_gb_min (Union[None, Unset, float]):
+        description (Union[Unset, str]):
+        last_used_secs_ago (Union[None, Unset, float]): Seconds since this engine last served a request; null if never
+            used.
     """
 
     slug: str
     executor: str
     loaded: bool
     noncommercial: bool
-    variant: None | str | Unset = UNSET
-    cuda_only: bool | Unset = UNSET
-    vram_gb_min: float | None | Unset = UNSET
-    description: str | Unset = UNSET
-    last_used_secs_ago: float | None | Unset = UNSET
+    variant: Union[None, Unset, str] = UNSET
+    cuda_only: Union[Unset, bool] = UNSET
+    vram_gb_min: Union[None, Unset, float] = UNSET
+    description: Union[Unset, str] = UNSET
+    last_used_secs_ago: Union[None, Unset, float] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -46,7 +45,7 @@ class EngineInfo:
 
         noncommercial = self.noncommercial
 
-        variant: None | str | Unset
+        variant: Union[None, Unset, str]
         if isinstance(self.variant, Unset):
             variant = UNSET
         else:
@@ -54,7 +53,7 @@ class EngineInfo:
 
         cuda_only = self.cuda_only
 
-        vram_gb_min: float | None | Unset
+        vram_gb_min: Union[None, Unset, float]
         if isinstance(self.vram_gb_min, Unset):
             vram_gb_min = UNSET
         else:
@@ -62,7 +61,7 @@ class EngineInfo:
 
         description = self.description
 
-        last_used_secs_ago: float | None | Unset
+        last_used_secs_ago: Union[None, Unset, float]
         if isinstance(self.last_used_secs_ago, Unset):
             last_used_secs_ago = UNSET
         else:
@@ -102,34 +101,34 @@ class EngineInfo:
 
         noncommercial = d.pop("noncommercial")
 
-        def _parse_variant(data: object) -> None | str | Unset:
+        def _parse_variant(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         variant = _parse_variant(d.pop("variant", UNSET))
 
         cuda_only = d.pop("cuda_only", UNSET)
 
-        def _parse_vram_gb_min(data: object) -> float | None | Unset:
+        def _parse_vram_gb_min(data: object) -> Union[None, Unset, float]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(float | None | Unset, data)
+            return cast(Union[None, Unset, float], data)
 
         vram_gb_min = _parse_vram_gb_min(d.pop("vram_gb_min", UNSET))
 
         description = d.pop("description", UNSET)
 
-        def _parse_last_used_secs_ago(data: object) -> float | None | Unset:
+        def _parse_last_used_secs_ago(data: object) -> Union[None, Unset, float]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(float | None | Unset, data)
+            return cast(Union[None, Unset, float], data)
 
         last_used_secs_ago = _parse_last_used_secs_ago(d.pop("last_used_secs_ago", UNSET))
 

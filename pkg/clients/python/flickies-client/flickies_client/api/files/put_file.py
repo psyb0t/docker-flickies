@@ -1,6 +1,5 @@
 from http import HTTPStatus
-from typing import Any
-from urllib.parse import quote
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -20,12 +19,11 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/v1/files/{path}".format(
-            path=quote(str(path), safe=""),
-        ),
+        "url": f"/v1/files/{path}",
     }
 
     _kwargs["content"] = body.payload
+
     headers["Content-Type"] = "application/octet-stream"
 
     _kwargs["headers"] = headers
@@ -33,23 +31,20 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> ErrorBody | StagedOutputResponse | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[ErrorBody, StagedOutputResponse]]:
     if response.status_code == 201:
         response_201 = StagedOutputResponse.from_dict(response.json())
 
         return response_201
-
     if response.status_code == 401:
         response_401 = ErrorBody.from_dict(response.json())
 
         return response_401
-
     if response.status_code == 413:
         response_413 = ErrorBody.from_dict(response.json())
 
         return response_413
-
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -57,8 +52,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[ErrorBody | StagedOutputResponse]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[ErrorBody, StagedOutputResponse]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -70,9 +65,9 @@ def _build_response(
 def sync_detailed(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: File,
-) -> Response[ErrorBody | StagedOutputResponse]:
+) -> Response[Union[ErrorBody, StagedOutputResponse]]:
     """Upload a video/audio file to the local staging area.
 
     Args:
@@ -84,7 +79,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | StagedOutputResponse]
+        Response[Union[ErrorBody, StagedOutputResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -102,9 +97,9 @@ def sync_detailed(
 def sync(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: File,
-) -> ErrorBody | StagedOutputResponse | None:
+) -> Optional[Union[ErrorBody, StagedOutputResponse]]:
     """Upload a video/audio file to the local staging area.
 
     Args:
@@ -116,7 +111,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | StagedOutputResponse
+        Union[ErrorBody, StagedOutputResponse]
     """
 
     return sync_detailed(
@@ -129,9 +124,9 @@ def sync(
 async def asyncio_detailed(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: File,
-) -> Response[ErrorBody | StagedOutputResponse]:
+) -> Response[Union[ErrorBody, StagedOutputResponse]]:
     """Upload a video/audio file to the local staging area.
 
     Args:
@@ -143,7 +138,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | StagedOutputResponse]
+        Response[Union[ErrorBody, StagedOutputResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -159,9 +154,9 @@ async def asyncio_detailed(
 async def asyncio(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: File,
-) -> ErrorBody | StagedOutputResponse | None:
+) -> Optional[Union[ErrorBody, StagedOutputResponse]]:
     """Upload a video/audio file to the local staging area.
 
     Args:
@@ -173,7 +168,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | StagedOutputResponse
+        Union[ErrorBody, StagedOutputResponse]
     """
 
     return (

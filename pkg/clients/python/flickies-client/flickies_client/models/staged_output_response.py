@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -17,18 +15,18 @@ class StagedOutputResponse:
     Attributes:
         path (str):
         size (int):
-        sha256 (None | str | Unset):
-        duration_sec (float | None | Unset):
-        width (int | None | Unset):
-        height (int | None | Unset):
+        sha256 (Union[None, Unset, str]):
+        duration_sec (Union[None, Unset, float]):
+        width (Union[None, Unset, int]):
+        height (Union[None, Unset, int]):
     """
 
     path: str
     size: int
-    sha256: None | str | Unset = UNSET
-    duration_sec: float | None | Unset = UNSET
-    width: int | None | Unset = UNSET
-    height: int | None | Unset = UNSET
+    sha256: Union[None, Unset, str] = UNSET
+    duration_sec: Union[None, Unset, float] = UNSET
+    width: Union[None, Unset, int] = UNSET
+    height: Union[None, Unset, int] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -36,25 +34,25 @@ class StagedOutputResponse:
 
         size = self.size
 
-        sha256: None | str | Unset
+        sha256: Union[None, Unset, str]
         if isinstance(self.sha256, Unset):
             sha256 = UNSET
         else:
             sha256 = self.sha256
 
-        duration_sec: float | None | Unset
+        duration_sec: Union[None, Unset, float]
         if isinstance(self.duration_sec, Unset):
             duration_sec = UNSET
         else:
             duration_sec = self.duration_sec
 
-        width: int | None | Unset
+        width: Union[None, Unset, int]
         if isinstance(self.width, Unset):
             width = UNSET
         else:
             width = self.width
 
-        height: int | None | Unset
+        height: Union[None, Unset, int]
         if isinstance(self.height, Unset):
             height = UNSET
         else:
@@ -86,39 +84,39 @@ class StagedOutputResponse:
 
         size = d.pop("size")
 
-        def _parse_sha256(data: object) -> None | str | Unset:
+        def _parse_sha256(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         sha256 = _parse_sha256(d.pop("sha256", UNSET))
 
-        def _parse_duration_sec(data: object) -> float | None | Unset:
+        def _parse_duration_sec(data: object) -> Union[None, Unset, float]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(float | None | Unset, data)
+            return cast(Union[None, Unset, float], data)
 
         duration_sec = _parse_duration_sec(d.pop("duration_sec", UNSET))
 
-        def _parse_width(data: object) -> int | None | Unset:
+        def _parse_width(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(Union[None, Unset, int], data)
 
         width = _parse_width(d.pop("width", UNSET))
 
-        def _parse_height(data: object) -> int | None | Unset:
+        def _parse_height(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(Union[None, Unset, int], data)
 
         height = _parse_height(d.pop("height", UNSET))
 

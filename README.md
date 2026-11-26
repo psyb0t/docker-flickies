@@ -21,9 +21,9 @@ No account. No subscription. `docker run` and you're done.
 |--|--|
 | 👄 **Lipsync** | **LatentSync 1.5** (ByteDance, Apache-2.0, default, CUDA image) + **Wav2Lip / Wav2Lip-GAN** (Rudrabha, fast and low-VRAM, behind `FLICKIES_ENABLE_NONCOMMERCIAL=1`) |
 | 🧹 **Face restore** | **GFPGAN v1.4** (TencentARC, Apache-2.0). Cleans up the soft 96×96 Wav2Lip mouth crop, or use it standalone |
-| ⚙️ **ffmpeg ops** | Trim · concat · transcode (incl. gif + fps + codec change) · scale · mux audio · extract audio · thumbnail grid. Pure ffmpeg, CPU |
+| ⚙️ **ffmpeg ops** | Trim · concat · transcode (incl. gif + fps + codec change) · scale · mux audio · extract audio · thumbnail grid, subtitles, timed overlays, crop, composition, scene detection and frame extraction. CPU |
 | 📋 **Info** | ffprobe metadata at `/v1/video/info`: duration, codec, fps, dimensions, bitrate |
-| 🔗 **MCP server** | 11 tools at `/v1/mcp` so function-calling LLMs can drive the pipeline |
+| 🔗 **MCP server** | 18 tools at `/v1/mcp` so function-calling LLMs can drive the pipeline |
 | 📜 **Spec-first** | `openapi.yaml` is the single source; server models, Go client and Python client are all generated from it |
 | 🐳 **Hot-swap eviction + idle unload** | One GPU pool, one model resident. A different model evicts the current one. Idle longer than `FLICKIES_IDLE_UNLOAD_SECS` (default 600s) and the sweeper unloads it |
 
@@ -62,7 +62,7 @@ Full docs: **[psyb0t.github.io/docker-flickies](https://psyb0t.github.io/docker-
 | [Configuration](https://psyb0t.github.io/docker-flickies/configuration/) | Every environment variable and its default |
 | [REST API](https://psyb0t.github.io/docker-flickies/api/) | Every endpoint, async jobs, webhooks, headers, error codes |
 | [Engines](https://psyb0t.github.io/docker-flickies/engines/) | LatentSync, Wav2Lip, GFPGAN, licenses, VRAM, hot-swap |
-| [MCP and agents](https://psyb0t.github.io/docker-flickies/mcp/) | The 11 MCP tools, Claude Code, Codex and OpenClaw installs |
+| [MCP and agents](https://psyb0t.github.io/docker-flickies/mcp/) | The 18 MCP tools, Claude Code, Codex and OpenClaw installs |
 | [Generated clients](https://psyb0t.github.io/docker-flickies/clients/) | Go and Python clients and their gaps |
 | [Logging](https://psyb0t.github.io/docker-flickies/logging/) | JSON log fields, request ids, redaction, DEBUG |
 | [Security](https://psyb0t.github.io/docker-flickies/security/) | What it reaches and stores, what to set before exposing it |

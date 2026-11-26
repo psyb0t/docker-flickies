@@ -20,13 +20,20 @@ The server is built in [src/flickies/mcp_server.py](https://github.com/psyb0t/do
 | `info` | `file_path` or `file_url` | `POST /v1/video/info` |
 | `lipsync` | `face_path`/`face_url`, `audio_path`/`audio_url`, `engine` (default `latentsync-1.5`), `restore_face` (default `false`), `output_path` | `POST /v1/video/lipsync` |
 | `restore` | `file_path`/`file_url`, `output_path` | `POST /v1/video/restore` |
-| `transcode` | `file_path`/`file_url`, `output_format`, `video_codec`, `audio_codec`, `crf`, `preset`, `fps`, `gif_options`, `output_path` | `POST /v1/video/transcode` |
+| `transcode` | `file_path`/`file_url`, `output_format`, `video_codec`, `audio_codec`, `crf`, `preset`, `fps`, `gif_options`, `max_size_bytes`, `output_path` | `POST /v1/video/transcode` |
 | `trim` | `file_path`/`file_url`, `start_sec`, `end_sec`, `precise`, `output_path` | `POST /v1/video/trim` |
-| `concat` | `inputs_paths` or `inputs_urls`, `precise`, `output_path` | `POST /v1/video/concat` |
+| `concat` | `inputs_paths` or `inputs_urls`, `precise`, `transitions`, `output_path` | `POST /v1/video/concat` |
 | `scale` | `file_path`/`file_url`, `width`, `height`, `keep_aspect`, `output_path` | `POST /v1/video/scale` |
 | `mux_audio` | `video_path_or_url`, `audio_path_or_url`, `replace_existing_audio`, `output_path` | `POST /v1/video/mux_audio` |
 | `extract_audio` | `file_path`/`file_url`, `audio_format`, `output_path` | `POST /v1/video/extract_audio` |
-| `thumbnail_grid` | `file_path`/`file_url`, `rows` (default 3), `cols` (default 4), `cell_width`, `cell_height`, `output_path` | `POST /v1/video/thumbnail_grid` |
+| `thumbnail_grid` | `file_path`/`file_url`, `rows` (default 3), `cols` (default 4), `cell_width`, `cell_height`, `timestamps`, `layout`, `output_path` | `POST /v1/video/thumbnail_grid` |
+| `subtitles` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/subtitles` |
+| `overlay` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/overlay` |
+| `crop` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/crop` |
+| `compose` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/compose` |
+| `scenes` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/scenes` |
+| `analyze` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/analyze` |
+| `frames` | `file_path` or `file_url`, operation options, `output_path` | `POST /v1/video/frames` |
 
 Field meanings and defaults match the [REST API](api.md). Video-producing tools return `{"path": "<output_path>", "size": <bytes>}`.
 

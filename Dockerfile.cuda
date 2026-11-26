@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         git \
-        ffmpeg \
+        ffmpeg imagemagick fonts-dejavu-core \
         libgl1 \
         libglib2.0-0 \
         build-essential \

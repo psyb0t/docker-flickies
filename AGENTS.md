@@ -23,7 +23,7 @@ It keeps one ML engine resident at a time on limited VRAM (hot-swap eviction plu
 - **Input/output contract.** `_resolve_input()` (`file_path` xor `file_url`), `_validate_output_xor()` and `_run_or_schedule()` in `server.py` implement it for every video route. Paths go through `resolve_safe()` (`src/flickies/files.py`), URLs through `fetch_to_temp()` and `put_file()` (`src/flickies/fetch.py`).
 - **Async jobs.** `JobQueue` (`src/flickies/jobs.py`) runs work as an asyncio task in memory; `deliver()` (`src/flickies/webhooks.py`) posts the final state with an HMAC signature and backoff retries.
 - **Middleware.** Outermost to innermost: `RequestIdMiddleware`, `RateLimitMiddleware`, `IdempotencyMiddleware` (`src/flickies/middleware.py`), then `BearerAuthMiddleware` (`src/flickies/auth.py`, only when `FLICKIES_AUTH_TOKEN` is set).
-- **MCP.** `build_mcp_server()` (`src/flickies/mcp_server.py`) builds a stateless FastMCP server with 11 tools, mounted at `/v1/mcp`.
+- **MCP.** `build_mcp_server()` (`src/flickies/mcp_server.py`) builds a stateless FastMCP server with 18 tools, mounted at `/v1/mcp`.
 - **Boot.** `entrypoint.sh` sets defaults (`FLICKIES_HOST=0.0.0.0`), aliases the Hugging Face token variables, patches basicsr if needed, runs `python -m flickies.prefetch`, then `exec python -m flickies`.
 - **Agent integrations.** `.agents/skills/flickies/` is the agent skill; `.agents/plugins/flickies/` is an OpenClaw plugin (`bin/cli.js` runs `mcp-remote` against `$FLICKIES_URL/v1/mcp`); `.agents/.claude-plugin/` and `.agents/.codex-plugin/` hold the plugin manifests; `server.json` is the MCP Registry entry.
 
@@ -56,7 +56,7 @@ client -> RequestId -> RateLimit -> Idempotency -> BearerAuth -> route
 | Path | What it owns |
 | --- | --- |
 | `src/flickies/server.py` | App factory, routes, input/output contract, async scheduling, error envelope handlers, `/healthz`. |
-| `src/flickies/mcp_server.py` | FastMCP server and its 11 tools. |
+| `src/flickies/mcp_server.py` | FastMCP server and its 18 tools. |
 | `src/flickies/engines/` | `base.py` (Engine lifecycle), `_registry.py`, `_license_gate.py`, `wav2lip.py`, `latentsync.py`, `gfpgan.py`. |
 | `src/flickies/ffmpeg.py` | Every ffmpeg and ffprobe invocation. |
 | `src/flickies/files.py`, `src/flickies/fetch.py` | Staging paths, upload cap, streaming; URL fetch, presigned PUT, SSRF guard, `loggable_url()`. |

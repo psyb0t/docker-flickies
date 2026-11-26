@@ -366,11 +366,13 @@ components:
             transparent).
 
     VideoConcatRequest:
-      allOf:
-        - $ref: "#/components/schemas/BaseVideoOutputRequest"
       type: object
       description: Concatenate ≥2 videos in order. Exactly one of inputs_paths / inputs_urls must be provided.
       properties:
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
         inputs_paths:
           type: array
           nullable: true
@@ -381,6 +383,7 @@ components:
           nullable: true
           items: { type: string, format: uri }
           minItems: 2
+        transitions: {type: array, nullable: true, maxItems: 15, items: {$ref: "#/components/schemas/VideoTransition"}, description: "One transition per join. Omit for the original concat behavior."}
         precise:
           type: boolean
           default: false
@@ -393,9 +396,6 @@ components:
             generation re-encode).
 
     VideoTranscodeRequest:
-      allOf:
-        - $ref: "#/components/schemas/BaseVideoInputRequest"
-        - $ref: "#/components/schemas/BaseVideoOutputRequest"
       type: object
       description: |
         Universal re-encode. `output_format` in BaseVideoOutputRequest drives
@@ -403,6 +403,14 @@ components:
         `gif` → palette-aware two-pass). `fps`, codec, crf, preset all apply
         to the re-encode; gif-specific options live under `gif_options`.
       properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        output_format: {type: string, enum: [mp4, webm, mov, mkv, gif], default: mp4}
+        max_size_bytes: {type: integer, nullable: true, minimum: 65536, description: "MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with CRF."}
         video_codec: { type: string, nullable: true, examples: [libx264, libx265, libvpx-vp9, libaom-av1] }
         audio_codec: { type: string, nullable: true, examples: [aac, libopus, copy] }
         crf: { type: integer, nullable: true, minimum: 0, maximum: 51 }
@@ -459,17 +467,146 @@ components:
         output_url: { type: string, nullable: true, format: uri }
 
     VideoThumbnailGridRequest:
-      allOf:
-        - $ref: "#/components/schemas/BaseVideoInputRequest"
       type: object
       required: [rows, cols]
       properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        timestamps: {type: boolean, default: false}
+        layout: {type: string, enum: [tight, review], default: tight}
         rows: { type: integer, minimum: 1, maximum: 16 }
         cols: { type: integer, minimum: 1, maximum: 16 }
         cell_width: { type: integer, default: 320 }
         cell_height: { type: integer, default: 180 }
-        output_path: { type: string, nullable: true }
-        output_url: { type: string, nullable: true, format: uri }
+
+    TimedWord:
+      type: object
+      required: [text, start_sec, end_sec]
+      properties:
+        text: {type: string, minLength: 1, maxLength: 128}
+        start_sec: {type: number, minimum: 0, maximum: 86400}
+        end_sec: {type: number, minimum: 0, maximum: 86400}
+
+    VideoTransition:
+      type: object
+      required: [effect, duration_sec]
+      properties:
+        effect: {type: string, enum: [cut, fade, wipeleft, wiperight, slideleft, slideright, dissolve]}
+        duration_sec: {type: number, minimum: 0, maximum: 10}
+
+    VideoSubtitlesRequest:
+      type: object
+      description: "Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word timestamps."
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        subtitle_path: {type: string, nullable: true, description: "Staged SRT or ASS path. Supply exactly one of subtitle_path and words."}
+        words: {type: array, nullable: true, minItems: 1, maxItems: 12000, items: {$ref: "#/components/schemas/TimedWord"}}
+        mode: {type: string, enum: [burn, embed], default: burn}
+        words_per_line: {type: integer, minimum: 1, maximum: 12, default: 4}
+        font_size: {type: integer, minimum: 12, maximum: 140, default: 56}
+
+    VideoOverlayRequest:
+      type: object
+      description: "Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval."
+      required: [end_sec]
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        image_path: {type: string, nullable: true, description: "Staged image path. Supply exactly one of image_path and text."}
+        text: {type: string, nullable: true, maxLength: 160}
+        start_sec: {type: number, minimum: 0, maximum: 86400, default: 0}
+        end_sec: {type: number, minimum: 0, maximum: 86400}
+        x: {type: integer, minimum: 0, maximum: 16384, default: 24}
+        y: {type: integer, minimum: 0, maximum: 16384, default: 24}
+
+    VideoCropRequest:
+      type: object
+      description: "Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background."
+      required: [width, height]
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2}
+        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2}
+        mode: {type: string, enum: [crop, pad, blur], default: crop}
+        x: {type: integer, nullable: true, minimum: 0, maximum: 16384}
+        y: {type: integer, nullable: true, minimum: 0, maximum: 16384}
+
+    VideoComposeRequest:
+      type: object
+      description: "Combine two clips side by side, stacked or picture-in-picture."
+      required: [second_path]
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        second_path: {type: string, description: "Staged path of the second video."}
+        layout: {type: string, enum: [horizontal, vertical, pip], default: horizontal}
+        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 1280}
+        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 720}
+        audio: {type: string, enum: [first, second, none], default: first}
+
+    VideoScenesRequest:
+      type: object
+      description: "Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed clips."
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        threshold: {type: number, minimum: 0, exclusiveMinimum: true, maximum: 100, default: 10}
+        artifacts: {type: string, enum: [none, frames, clips], default: none}
+        max_scenes: {type: integer, minimum: 1, maximum: 200, default: 50}
+
+    VideoAnalyzeRequest:
+      type: object
+      description: "Report black frames, frozen video and silent intervals in a JSON file."
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        black_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.25}
+        freeze_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5}
+        silence_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5}
+        silence_db: {type: number, minimum: -90, maximum: -5, default: -40}
+
+    VideoFramesRequest:
+      type: object
+      description: "Extract timestamped JPEG samples into a ZIP with a frames.json manifest."
+      properties:
+        file_path: {type: string, nullable: true, description: "Staged input path. Provide exactly one input."}
+        file_url: {type: string, format: uri, nullable: true, description: "HTTP(S) input URL."}
+        output_path: {type: string, nullable: true, description: "Staged output path in synchronous mode."}
+        output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
+        async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
+        webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
+        sample_interval_sec: {type: number, minimum: 0.1, maximum: 60, default: 1}
+        max_frames: {type: integer, minimum: 1, maximum: 120, default: 60}
 
     VideoInfoRequest:
       allOf:
@@ -683,6 +820,12 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/StagedOutputResponse"
                   - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
 
   /v1/video/transcode:
     post:
@@ -702,6 +845,12 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/StagedOutputResponse"
                   - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
 
   /v1/video/scale:
     post:
@@ -778,6 +927,215 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/StagedOutputResponse"
                   - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+
+  /v1/video/subtitles:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoSubtitles
+      summary: "Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word timestamps."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoSubtitlesRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/overlay:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoOverlay
+      summary: "Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoOverlayRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/crop:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoCrop
+      summary: "Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoCropRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/compose:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoCompose
+      summary: "Combine two clips side by side, stacked or picture-in-picture."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoComposeRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/scenes:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoScenes
+      summary: "Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed clips."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoScenesRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/analyze:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoAnalyze
+      summary: "Report black frames, frozen video and silent intervals in a JSON file."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoAnalyzeRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
+
+  /v1/video/frames:
+    post:
+      tags: [Video Transform]
+      operationId: postVideoFrames
+      summary: "Extract timestamped JPEG samples into a ZIP with a frames.json manifest."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VideoFramesRequest" }
+      responses:
+        "200":
+          description: Output written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StagedOutputResponse"
+                  - $ref: "#/components/schemas/UrlOutputResponse"
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAcceptedResponse" }
+        "400": { $ref: "#/components/responses/400" }
+        "401": { $ref: "#/components/responses/401" }
+        "404": { $ref: "#/components/responses/404" }
+        "422": { $ref: "#/components/responses/422" }
 
   /v1/video/info:
     post:

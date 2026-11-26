@@ -17,7 +17,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH=/usr/local/go/bin:/root/go/bin:${PATH}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg \
+        ffmpeg imagemagick fonts-dejavu-core \
         git \
         curl \
         make \
@@ -37,6 +37,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.15 /uv /usr/local/bin/uv
 RUN pip install --no-cache-dir \
         fastapi==0.115.12 \
         uvicorn==0.34.2 \
+        mcp==1.27.1 \
         pydantic==2.11.4 \
         python-multipart==0.0.20 \
         python-json-logger==2.0.7 \
@@ -47,7 +48,7 @@ RUN pip install --no-cache-dir \
         pytest-cov==5.0.0 \
     && pip install --no-cache-dir \
         'datamodel-code-generator[http]' \
-        openapi-python-client
+        openapi-python-client==0.25.3
 
 # The pyright wheel fetches node and the pyright npm package on first run.
 # Do it at build time into a shared cache, so `make lint` works as any uid

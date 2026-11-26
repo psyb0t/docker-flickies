@@ -13,6 +13,10 @@ Tools:
   - extract_audio       — pull audio track out as wav/mp3/m4a/ogg/flac
   - thumbnail_grid      — generate a sprite-sheet PNG
   - info                — ffprobe metadata
+  - subtitles, overlay  — captions and graphics
+  - crop, compose       — layout and framing
+  - scenes, analyze     — cut and quality reports
+  - frames              — timestamped frame samples
 
 Mirror of the REST surface; argument shapes match openapi.yaml so
 generated TS/Go/Python clients can be used interchangeably with MCP.
@@ -22,9 +26,12 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
+from fastapi import HTTPException
 from mcp.server.fastmcp import FastMCP
 
 from flickies.config import Config
@@ -32,7 +39,19 @@ from flickies.engines._license_gate import NonCommercialOptInRequired
 from flickies.engines._registry import EngineNotRegistered, Registry
 from flickies.fetch import fetch_to_temp
 from flickies.ffmpeg import FFmpeg
-from flickies.files import files_dir, resolve_safe
+from flickies.files import files_dir, resolve_existing, resolve_safe
+from flickies.video_edits import (
+    Compose,
+    Crop,
+    GridStyle,
+    Overlay,
+    QualityAnalysis,
+    SampleFrames,
+    Scenes,
+    Subtitles,
+    Transition,
+    Word,
+)
 
 _log = logging.getLogger("flickies.mcp")
 
@@ -57,9 +76,7 @@ def build_mcp_server(
             "concat / scale / mux audio / extract audio / thumbnail grid / "
             "info. Input: stage via PUT /v1/files/{path} then pass file_path, "
             "OR pass file_url for server fetch. Output: every video-producing "
-            "tool requires exactly one of output_path (writes under FILES_DIR; "
-            "response {path,size}) xor output_url (presigned PUT; response "
-            "{url,size}). Wav2Lip variants are non-commercial (LRS2); the "
+            "tool requires output_path, written under FILES_DIR. Wav2Lip variants are non-commercial (LRS2); the "
             "server refuses to load them unless FLICKIES_ENABLE_NONCOMMERCIAL=1 "
             "is set in its env."
         ),
@@ -80,7 +97,7 @@ def build_mcp_server(
         if n != 1:
             raise ValueError("must provide exactly one of: file_path, file_url")
         if file_path:
-            return resolve_safe(files_dir(cfg.data_dir), file_path), False
+            return resolve_existing(files_dir(cfg.data_dir), file_path), False
         assert file_url is not None
         return await fetch_to_temp(file_url, suffix=suffix), True
 
@@ -225,6 +242,7 @@ def build_mcp_server(
         preset: str | None = None,
         fps: float | None = None,
         gif_options: dict[str, Any] | None = None,
+        max_size_bytes: int | None = None,
     ) -> dict[str, Any]:
         """Universal re-encode. output_format = mp4/webm/mov/mkv/gif.
 
@@ -244,6 +262,7 @@ def build_mcp_server(
                 preset=preset,
                 fps=fps,
                 gif_options=gif_options,
+                max_size_bytes=max_size_bytes,
             )
         finally:
             if is_tmp:
@@ -283,6 +302,7 @@ def build_mcp_server(
         inputs_urls: list[str] | None = None,
         precise: bool = False,
         output_path: str | None = None,
+        transitions: list[Transition] | None = None,
     ) -> dict[str, Any]:
         """Concat >=2 videos in order.
 
@@ -304,8 +324,8 @@ def build_mcp_server(
                     resolved.append(t)
             else:
                 assert inputs_paths is not None
-                resolved = [resolve_safe(files_dir(cfg.data_dir), p) for p in inputs_paths]
-            await ffmpeg.concat(resolved, dst, precise=precise)
+                resolved = [resolve_existing(files_dir(cfg.data_dir), p) for p in inputs_paths]
+            await ffmpeg.concat(resolved, dst, precise=precise, transitions=transitions)
         finally:
             for t in tmps:
                 with contextlib.suppress(OSError):
@@ -387,8 +407,11 @@ def build_mcp_server(
         cell_width: int = 320,
         cell_height: int = 180,
         output_path: str | None = None,
+        timestamps: bool = False,
+        layout: Literal["tight", "review"] = "tight",
     ) -> dict[str, Any]:
         """Generate a thumbnail-grid PNG (sprite sheet) from a video."""
+        style = GridStyle(timestamps=timestamps, layout=layout)
         dst = _resolve_output(output_path)
         src, is_tmp = await _resolve_video(file_path, file_url)
         try:
@@ -399,11 +422,191 @@ def build_mcp_server(
                 cols=cols,
                 cell_width=cell_width,
                 cell_height=cell_height,
+                timestamps=style.timestamps,
+                layout=style.layout,
             )
         finally:
             if is_tmp:
                 with contextlib.suppress(OSError):
                     src.unlink()
         return {"path": output_path, "size": dst.stat().st_size}
+
+    async def _edit(
+        file_path: str | None,
+        file_url: str | None,
+        output_path: str | None,
+        suffix: str,
+        operation: Callable[[Path, Path], Awaitable[None]],
+    ) -> dict[str, Any]:
+        dst = _resolve_output(output_path)
+        src, is_tmp = await _resolve_video(file_path, file_url)
+        try:
+            with tempfile.TemporaryDirectory(dir=dst.parent, prefix=".flickies-") as directory:
+                temporary = Path(directory) / ("result" + suffix)
+                await operation(src, temporary)
+                temporary.replace(dst)
+        except HTTPException as exc:
+            detail = exc.detail.get("message") if isinstance(exc.detail, dict) else exc.detail
+            raise ValueError(str(detail)) from exc
+        finally:
+            if is_tmp:
+                with contextlib.suppress(OSError):
+                    src.unlink()
+        return {"path": output_path, "size": dst.stat().st_size}
+
+    @mcp.tool()
+    async def subtitles(
+        subtitle_path: str | None = None,
+        words: list[Word] | None = None,
+        mode: Literal["burn", "embed"] = "burn",
+        words_per_line: int = 4,
+        font_size: int = 56,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Burn or embed captions, or render karaoke from word timestamps."""
+        spec = Subtitles(
+            subtitle_path=subtitle_path,
+            words=words,
+            mode=mode,
+            words_per_line=words_per_line,
+            font_size=font_size,
+        )
+        subtitle = (
+            resolve_existing(files_dir(cfg.data_dir), spec.subtitle_path)
+            if spec.subtitle_path
+            else None
+        )
+        return await _edit(
+            file_path,
+            file_url,
+            output_path,
+            ".mp4",
+            lambda src, dst: ffmpeg.subtitles(src, dst, spec, subtitle),
+        )
+
+    @mcp.tool()
+    async def overlay(
+        end_sec: float,
+        start_sec: float = 0,
+        image_path: str | None = None,
+        text: str | None = None,
+        x: int = 24,
+        y: int = 24,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Overlay a still image or title for a time range."""
+        spec = Overlay(
+            image_path=image_path, text=text, start_sec=start_sec, end_sec=end_sec, x=x, y=y
+        )
+        image = (
+            resolve_existing(files_dir(cfg.data_dir), spec.image_path) if spec.image_path else None
+        )
+        return await _edit(
+            file_path,
+            file_url,
+            output_path,
+            ".mp4",
+            lambda src, dst: ffmpeg.overlay(src, dst, spec, image),
+        )
+
+    @mcp.tool()
+    async def crop(
+        width: int,
+        height: int,
+        mode: Literal["crop", "pad", "blur"] = "crop",
+        x: int | None = None,
+        y: int | None = None,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Crop a video, letterbox it, or fill the background with a blurred copy."""
+        spec = Crop(width=width, height=height, mode=mode, x=x, y=y)
+        return await _edit(
+            file_path, file_url, output_path, ".mp4", lambda src, dst: ffmpeg.crop(src, dst, spec)
+        )
+
+    @mcp.tool()
+    async def compose(
+        second_path: str,
+        layout: Literal["horizontal", "vertical", "pip"] = "horizontal",
+        width: int = 1280,
+        height: int = 720,
+        audio: Literal["first", "second", "none"] = "first",
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Combine two videos side by side, stacked, or picture in picture."""
+        spec = Compose(
+            second_path=second_path, layout=layout, width=width, height=height, audio=audio
+        )
+        second = resolve_existing(files_dir(cfg.data_dir), spec.second_path)
+        return await _edit(
+            file_path,
+            file_url,
+            output_path,
+            ".mp4",
+            lambda src, dst: ffmpeg.compose(src, dst, second, spec),
+        )
+
+    @mcp.tool()
+    async def scenes(
+        threshold: float = 10,
+        artifacts: Literal["none", "frames", "clips"] = "none",
+        max_scenes: int = 50,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Detect cuts and write a JSON manifest or ZIP with optional frames or clips."""
+        spec = Scenes(threshold=threshold, artifacts=artifacts, max_scenes=max_scenes)
+        suffix = ".json" if spec.artifacts == "none" else ".zip"
+        return await _edit(
+            file_path, file_url, output_path, suffix, lambda src, dst: ffmpeg.scenes(src, dst, spec)
+        )
+
+    @mcp.tool()
+    async def analyze(
+        black_min_sec: float = 0.25,
+        freeze_min_sec: float = 0.5,
+        silence_min_sec: float = 0.5,
+        silence_db: float = -40,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Report black, frozen, and silent intervals as JSON."""
+        spec = QualityAnalysis(
+            black_min_sec=black_min_sec,
+            freeze_min_sec=freeze_min_sec,
+            silence_min_sec=silence_min_sec,
+            silence_db=silence_db,
+        )
+        return await _edit(
+            file_path,
+            file_url,
+            output_path,
+            ".json",
+            lambda src, dst: ffmpeg.analyze(src, dst, spec),
+        )
+
+    @mcp.tool()
+    async def frames(
+        sample_interval_sec: float = 1,
+        max_frames: int = 60,
+        file_path: str | None = None,
+        file_url: str | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Extract timestamped JPEG samples and a frames.json manifest into a ZIP."""
+        spec = SampleFrames(sample_interval_sec=sample_interval_sec, max_frames=max_frames)
+        return await _edit(
+            file_path, file_url, output_path, ".zip", lambda src, dst: ffmpeg.frames(src, dst, spec)
+        )
 
     return mcp

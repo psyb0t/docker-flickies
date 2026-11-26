@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -17,12 +15,12 @@ class UrlOutputResponse:
     Attributes:
         url (str):
         size (int):
-        sha256 (None | str | Unset):
+        sha256 (Union[None, Unset, str]):
     """
 
     url: str
     size: int
-    sha256: None | str | Unset = UNSET
+    sha256: Union[None, Unset, str] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -30,7 +28,7 @@ class UrlOutputResponse:
 
         size = self.size
 
-        sha256: None | str | Unset
+        sha256: Union[None, Unset, str]
         if isinstance(self.sha256, Unset):
             sha256 = UNSET
         else:
@@ -56,12 +54,12 @@ class UrlOutputResponse:
 
         size = d.pop("size")
 
-        def _parse_sha256(data: object) -> None | str | Unset:
+        def _parse_sha256(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         sha256 = _parse_sha256(d.pop("sha256", UNSET))
 

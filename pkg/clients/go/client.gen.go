@@ -38,6 +38,27 @@ const (
 	Running   JobStatusResponseStatus = "running"
 )
 
+// Defines values for VideoComposeRequestAudio.
+const (
+	VideoComposeRequestAudioFirst  VideoComposeRequestAudio = "first"
+	VideoComposeRequestAudioNone   VideoComposeRequestAudio = "none"
+	VideoComposeRequestAudioSecond VideoComposeRequestAudio = "second"
+)
+
+// Defines values for VideoComposeRequestLayout.
+const (
+	Horizontal VideoComposeRequestLayout = "horizontal"
+	Pip        VideoComposeRequestLayout = "pip"
+	Vertical   VideoComposeRequestLayout = "vertical"
+)
+
+// Defines values for VideoCropRequestMode.
+const (
+	Blur VideoCropRequestMode = "blur"
+	Crop VideoCropRequestMode = "crop"
+	Pad  VideoCropRequestMode = "pad"
+)
+
 // Defines values for VideoRestoreRequestOutputFormat.
 const (
 	VideoRestoreRequestOutputFormatMkv  VideoRestoreRequestOutputFormat = "mkv"
@@ -54,12 +75,50 @@ const (
 	VideoScaleRequestOutputFormatWebm VideoScaleRequestOutputFormat = "webm"
 )
 
+// Defines values for VideoScenesRequestArtifacts.
+const (
+	VideoScenesRequestArtifactsClips  VideoScenesRequestArtifacts = "clips"
+	VideoScenesRequestArtifactsFrames VideoScenesRequestArtifacts = "frames"
+	VideoScenesRequestArtifactsNone   VideoScenesRequestArtifacts = "none"
+)
+
+// Defines values for VideoSubtitlesRequestMode.
+const (
+	Burn  VideoSubtitlesRequestMode = "burn"
+	Embed VideoSubtitlesRequestMode = "embed"
+)
+
+// Defines values for VideoThumbnailGridRequestLayout.
+const (
+	Review VideoThumbnailGridRequestLayout = "review"
+	Tight  VideoThumbnailGridRequestLayout = "tight"
+)
+
+// Defines values for VideoTranscodeRequestGifOptionsPaletteMode.
+const (
+	Diff   VideoTranscodeRequestGifOptionsPaletteMode = "diff"
+	Full   VideoTranscodeRequestGifOptionsPaletteMode = "full"
+	Single VideoTranscodeRequestGifOptionsPaletteMode = "single"
+)
+
 // Defines values for VideoTranscodeRequestOutputFormat.
 const (
+	VideoTranscodeRequestOutputFormatGif  VideoTranscodeRequestOutputFormat = "gif"
 	VideoTranscodeRequestOutputFormatMkv  VideoTranscodeRequestOutputFormat = "mkv"
 	VideoTranscodeRequestOutputFormatMov  VideoTranscodeRequestOutputFormat = "mov"
 	VideoTranscodeRequestOutputFormatMp4  VideoTranscodeRequestOutputFormat = "mp4"
 	VideoTranscodeRequestOutputFormatWebm VideoTranscodeRequestOutputFormat = "webm"
+)
+
+// Defines values for VideoTransitionEffect.
+const (
+	Cut        VideoTransitionEffect = "cut"
+	Dissolve   VideoTransitionEffect = "dissolve"
+	Fade       VideoTransitionEffect = "fade"
+	Slideleft  VideoTransitionEffect = "slideleft"
+	Slideright VideoTransitionEffect = "slideright"
+	Wipeleft   VideoTransitionEffect = "wipeleft"
+	Wiperight  VideoTransitionEffect = "wiperight"
 )
 
 // Defines values for VideoTrimRequestOutputFormat.
@@ -170,6 +229,13 @@ type StagedOutputResponse struct {
 	Width       *int     `json:"width"`
 }
 
+// TimedWord defines model for TimedWord.
+type TimedWord struct {
+	EndSec   float32 `json:"end_sec"`
+	StartSec float32 `json:"start_sec"`
+	Text     string  `json:"text"`
+}
+
 // UrlOutputResponse defines model for UrlOutputResponse.
 type UrlOutputResponse struct {
 	Sha256 *string `json:"sha256"`
@@ -177,11 +243,147 @@ type UrlOutputResponse struct {
 	Url    string  `json:"url"`
 }
 
-// VideoConcatRequest Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
-type VideoConcatRequest = BaseVideoOutputRequest
+// VideoAnalyzeRequest Report black frames, frozen video and silent intervals in a JSON file.
+type VideoAnalyzeRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob    *bool    `json:"async_job,omitempty"`
+	BlackMinSec *float32 `json:"black_min_sec,omitempty"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl      *string  `json:"file_url"`
+	FreezeMinSec *float32 `json:"freeze_min_sec,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl     *string  `json:"output_url"`
+	SilenceDb     *float32 `json:"silence_db,omitempty"`
+	SilenceMinSec *float32 `json:"silence_min_sec,omitempty"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+}
+
+// VideoComposeRequest Combine two clips side by side, stacked or picture-in-picture.
+type VideoComposeRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob *bool                     `json:"async_job,omitempty"`
+	Audio    *VideoComposeRequestAudio `json:"audio,omitempty"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl *string                    `json:"file_url"`
+	Height  *int                       `json:"height,omitempty"`
+	Layout  *VideoComposeRequestLayout `json:"layout,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string `json:"output_url"`
+
+	// SecondPath Staged path of the second video.
+	SecondPath string `json:"second_path"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+	Width      *int    `json:"width,omitempty"`
+}
+
+// VideoComposeRequestAudio defines model for VideoComposeRequest.Audio.
+type VideoComposeRequestAudio string
+
+// VideoComposeRequestLayout defines model for VideoComposeRequest.Layout.
+type VideoComposeRequestLayout string
+
+// VideoConcatRequest Concatenate ≥2 videos in order. Exactly one of inputs_paths / inputs_urls must be provided.
+type VideoConcatRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob    *bool     `json:"async_job,omitempty"`
+	InputsPaths *[]string `json:"inputs_paths"`
+	InputsUrls  *[]string `json:"inputs_urls"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string `json:"output_url"`
+
+	// Precise When false (default), concat uses the concat demuxer with
+	// `-c copy` — fast, but requires all inputs to share identical
+	// codec / timebase / SAR (mixing different encoders corrupts or
+	// fails). When true, the concat demuxer re-encodes with uniform
+	// H.264 + AAC so mixed inputs join cleanly (slower; single-
+	// generation re-encode).
+	Precise *bool `json:"precise,omitempty"`
+
+	// Transitions One transition per join. Omit for the original concat behavior.
+	Transitions *[]VideoTransition `json:"transitions"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+}
+
+// VideoCropRequest Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
+type VideoCropRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl *string               `json:"file_url"`
+	Height  int                   `json:"height"`
+	Mode    *VideoCropRequestMode `json:"mode,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string `json:"output_url"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+	Width      int     `json:"width"`
+	X          *int    `json:"x"`
+	Y          *int    `json:"y"`
+}
+
+// VideoCropRequestMode defines model for VideoCropRequest.Mode.
+type VideoCropRequestMode string
 
 // VideoExtractAudioRequest Exactly one of file_path / file_url MUST be provided. Enforced at handler boundary.
 type VideoExtractAudioRequest = BaseVideoInputRequest
+
+// VideoFramesRequest Extract timestamped JPEG samples into a ZIP with a frames.json manifest.
+type VideoFramesRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl   *string `json:"file_url"`
+	MaxFrames *int    `json:"max_frames,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl         *string  `json:"output_url"`
+	SampleIntervalSec *float32 `json:"sample_interval_sec,omitempty"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+}
 
 // VideoInfoRequest Exactly one of file_path / file_url MUST be provided. Enforced at handler boundary.
 type VideoInfoRequest = BaseVideoInputRequest
@@ -204,6 +406,35 @@ type VideoLipsyncRequest = BaseVideoOutputRequest
 
 // VideoMuxAudioRequest Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
 type VideoMuxAudioRequest = BaseVideoOutputRequest
+
+// VideoOverlayRequest Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
+type VideoOverlayRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob *bool   `json:"async_job,omitempty"`
+	EndSec   float32 `json:"end_sec"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl *string `json:"file_url"`
+
+	// ImagePath Staged image path. Supply exactly one of image_path and text.
+	ImagePath *string `json:"image_path"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string  `json:"output_url"`
+	StartSec  *float32 `json:"start_sec,omitempty"`
+	Text      *string  `json:"text"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+	X          *int    `json:"x,omitempty"`
+	Y          *int    `json:"y,omitempty"`
+}
 
 // VideoRestoreRequest defines model for VideoRestoreRequest.
 type VideoRestoreRequest struct {
@@ -245,28 +476,152 @@ type VideoScaleRequest struct {
 // VideoScaleRequestOutputFormat defines model for VideoScaleRequest.OutputFormat.
 type VideoScaleRequestOutputFormat string
 
-// VideoThumbnailGridRequest Exactly one of file_path / file_url MUST be provided. Enforced at handler boundary.
-type VideoThumbnailGridRequest = BaseVideoInputRequest
+// VideoScenesRequest Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed clips.
+type VideoScenesRequest struct {
+	Artifacts *VideoScenesRequestArtifacts `json:"artifacts,omitempty"`
 
-// VideoTranscodeRequest defines model for VideoTranscodeRequest.
-type VideoTranscodeRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
 	AsyncJob *bool `json:"async_job,omitempty"`
 
-	// FilePath FILES_DIR-relative path of an already-uploaded video.
+	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
 
-	// FileUrl HTTP(S) URL the server fetches.
-	FileUrl      *string                            `json:"file_url"`
-	OutputFormat *VideoTranscodeRequestOutputFormat `json:"output_format,omitempty"`
-	OutputPath   *string                            `json:"output_path"`
-	OutputUrl    *string                            `json:"output_url"`
+	// FileUrl HTTP(S) input URL.
+	FileUrl   *string `json:"file_url"`
+	MaxScenes *int    `json:"max_scenes,omitempty"`
 
-	// WebhookUrl Notify URL on async completion (HMAC-signed).
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string  `json:"output_url"`
+	Threshold *float32 `json:"threshold,omitempty"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
 }
 
+// VideoScenesRequestArtifacts defines model for VideoScenesRequest.Artifacts.
+type VideoScenesRequestArtifacts string
+
+// VideoSubtitlesRequest Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word timestamps.
+type VideoSubtitlesRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl  *string                    `json:"file_url"`
+	FontSize *int                       `json:"font_size,omitempty"`
+	Mode     *VideoSubtitlesRequestMode `json:"mode,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl *string `json:"output_url"`
+
+	// SubtitlePath Staged SRT or ASS path. Supply exactly one of subtitle_path and words.
+	SubtitlePath *string `json:"subtitle_path"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl   *string      `json:"webhook_url"`
+	Words        *[]TimedWord `json:"words"`
+	WordsPerLine *int         `json:"words_per_line,omitempty"`
+}
+
+// VideoSubtitlesRequestMode defines model for VideoSubtitlesRequest.Mode.
+type VideoSubtitlesRequestMode string
+
+// VideoThumbnailGridRequest defines model for VideoThumbnailGridRequest.
+type VideoThumbnailGridRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob   *bool `json:"async_job,omitempty"`
+	CellHeight *int  `json:"cell_height,omitempty"`
+	CellWidth  *int  `json:"cell_width,omitempty"`
+	Cols       int   `json:"cols"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl *string                          `json:"file_url"`
+	Layout  *VideoThumbnailGridRequestLayout `json:"layout,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl  *string `json:"output_url"`
+	Rows       int     `json:"rows"`
+	Timestamps *bool   `json:"timestamps,omitempty"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+}
+
+// VideoThumbnailGridRequestLayout defines model for VideoThumbnailGridRequest.Layout.
+type VideoThumbnailGridRequestLayout string
+
+// VideoTranscodeRequest Universal re-encode. `output_format` in BaseVideoOutputRequest drives
+// the filter graph (`mp4` / `webm` / `mov` / `mkv` → standard transcode;
+// `gif` → palette-aware two-pass). `fps`, codec, crf, preset all apply
+// to the re-encode; gif-specific options live under `gif_options`.
+type VideoTranscodeRequest struct {
+	// AsyncJob Schedule the job and stage the result under jobs/.
+	AsyncJob   *bool   `json:"async_job,omitempty"`
+	AudioCodec *string `json:"audio_codec"`
+	Crf        *int    `json:"crf"`
+
+	// FilePath Staged input path. Provide exactly one input.
+	FilePath *string `json:"file_path"`
+
+	// FileUrl HTTP(S) input URL.
+	FileUrl *string `json:"file_url"`
+
+	// Fps Re-encode at this frame rate. Applies to all output formats.
+	Fps *float32 `json:"fps"`
+
+	// GifOptions Only consulted when output_format=gif.
+	GifOptions *struct {
+		// Loop 0 = infinite
+		Loop        *int                                        `json:"loop,omitempty"`
+		PaletteMode *VideoTranscodeRequestGifOptionsPaletteMode `json:"palette_mode,omitempty"`
+		Width       *int                                        `json:"width"`
+	} `json:"gif_options"`
+
+	// MaxSizeBytes MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with CRF.
+	MaxSizeBytes *int                               `json:"max_size_bytes"`
+	OutputFormat *VideoTranscodeRequestOutputFormat `json:"output_format,omitempty"`
+
+	// OutputPath Staged output path in synchronous mode.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl Presigned PUT URL in synchronous mode.
+	OutputUrl  *string `json:"output_url"`
+	Preset     *string `json:"preset"`
+	VideoCodec *string `json:"video_codec"`
+
+	// WebhookUrl Callback URL for asynchronous completion.
+	WebhookUrl *string `json:"webhook_url"`
+}
+
+// VideoTranscodeRequestGifOptionsPaletteMode defines model for VideoTranscodeRequest.GifOptions.PaletteMode.
+type VideoTranscodeRequestGifOptionsPaletteMode string
+
 // VideoTranscodeRequestOutputFormat defines model for VideoTranscodeRequest.OutputFormat.
 type VideoTranscodeRequestOutputFormat string
+
+// VideoTransition defines model for VideoTransition.
+type VideoTransition struct {
+	DurationSec float32               `json:"duration_sec"`
+	Effect      VideoTransitionEffect `json:"effect"`
+}
+
+// VideoTransitionEffect defines model for VideoTransition.Effect.
+type VideoTransitionEffect string
 
 // VideoTrimRequest defines model for VideoTrimRequest.
 type VideoTrimRequest struct {
@@ -315,11 +670,23 @@ type N413 = ErrorBody
 // N422 defines model for 422.
 type N422 = ErrorBody
 
+// PostVideoAnalyzeJSONRequestBody defines body for PostVideoAnalyze for application/json ContentType.
+type PostVideoAnalyzeJSONRequestBody = VideoAnalyzeRequest
+
+// PostVideoComposeJSONRequestBody defines body for PostVideoCompose for application/json ContentType.
+type PostVideoComposeJSONRequestBody = VideoComposeRequest
+
 // PostVideoConcatJSONRequestBody defines body for PostVideoConcat for application/json ContentType.
 type PostVideoConcatJSONRequestBody = VideoConcatRequest
 
+// PostVideoCropJSONRequestBody defines body for PostVideoCrop for application/json ContentType.
+type PostVideoCropJSONRequestBody = VideoCropRequest
+
 // PostVideoExtractAudioJSONRequestBody defines body for PostVideoExtractAudio for application/json ContentType.
 type PostVideoExtractAudioJSONRequestBody = VideoExtractAudioRequest
+
+// PostVideoFramesJSONRequestBody defines body for PostVideoFrames for application/json ContentType.
+type PostVideoFramesJSONRequestBody = VideoFramesRequest
 
 // PostVideoInfoJSONRequestBody defines body for PostVideoInfo for application/json ContentType.
 type PostVideoInfoJSONRequestBody = VideoInfoRequest
@@ -330,11 +697,20 @@ type PostVideoLipsyncJSONRequestBody = VideoLipsyncRequest
 // PostVideoMuxAudioJSONRequestBody defines body for PostVideoMuxAudio for application/json ContentType.
 type PostVideoMuxAudioJSONRequestBody = VideoMuxAudioRequest
 
+// PostVideoOverlayJSONRequestBody defines body for PostVideoOverlay for application/json ContentType.
+type PostVideoOverlayJSONRequestBody = VideoOverlayRequest
+
 // PostVideoRestoreJSONRequestBody defines body for PostVideoRestore for application/json ContentType.
 type PostVideoRestoreJSONRequestBody = VideoRestoreRequest
 
 // PostVideoScaleJSONRequestBody defines body for PostVideoScale for application/json ContentType.
 type PostVideoScaleJSONRequestBody = VideoScaleRequest
+
+// PostVideoScenesJSONRequestBody defines body for PostVideoScenes for application/json ContentType.
+type PostVideoScenesJSONRequestBody = VideoScenesRequest
+
+// PostVideoSubtitlesJSONRequestBody defines body for PostVideoSubtitles for application/json ContentType.
+type PostVideoSubtitlesJSONRequestBody = VideoSubtitlesRequest
 
 // PostVideoThumbnailGridJSONRequestBody defines body for PostVideoThumbnailGrid for application/json ContentType.
 type PostVideoThumbnailGridJSONRequestBody = VideoThumbnailGridRequest
@@ -439,15 +815,35 @@ type ClientInterface interface {
 	// GetJob request
 	GetJob(ctx context.Context, jobId JobIdPath, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostVideoAnalyzeWithBody request with any body
+	PostVideoAnalyzeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoAnalyze(ctx context.Context, body PostVideoAnalyzeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostVideoComposeWithBody request with any body
+	PostVideoComposeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoCompose(ctx context.Context, body PostVideoComposeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostVideoConcatWithBody request with any body
 	PostVideoConcatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostVideoConcat(ctx context.Context, body PostVideoConcatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostVideoCropWithBody request with any body
+	PostVideoCropWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoCrop(ctx context.Context, body PostVideoCropJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostVideoExtractAudioWithBody request with any body
 	PostVideoExtractAudioWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostVideoExtractAudio(ctx context.Context, body PostVideoExtractAudioJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostVideoFramesWithBody request with any body
+	PostVideoFramesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoFrames(ctx context.Context, body PostVideoFramesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostVideoInfoWithBody request with any body
 	PostVideoInfoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -464,6 +860,11 @@ type ClientInterface interface {
 
 	PostVideoMuxAudio(ctx context.Context, body PostVideoMuxAudioJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostVideoOverlayWithBody request with any body
+	PostVideoOverlayWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoOverlay(ctx context.Context, body PostVideoOverlayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostVideoRestoreWithBody request with any body
 	PostVideoRestoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -473,6 +874,16 @@ type ClientInterface interface {
 	PostVideoScaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostVideoScale(ctx context.Context, body PostVideoScaleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostVideoScenesWithBody request with any body
+	PostVideoScenesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoScenes(ctx context.Context, body PostVideoScenesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostVideoSubtitlesWithBody request with any body
+	PostVideoSubtitlesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostVideoSubtitles(ctx context.Context, body PostVideoSubtitlesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostVideoThumbnailGridWithBody request with any body
 	PostVideoThumbnailGridWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -574,6 +985,54 @@ func (c *Client) GetJob(ctx context.Context, jobId JobIdPath, reqEditors ...Requ
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostVideoAnalyzeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoAnalyzeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoAnalyze(ctx context.Context, body PostVideoAnalyzeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoAnalyzeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoComposeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoComposeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoCompose(ctx context.Context, body PostVideoComposeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoComposeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostVideoConcatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostVideoConcatRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -598,6 +1057,30 @@ func (c *Client) PostVideoConcat(ctx context.Context, body PostVideoConcatJSONRe
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostVideoCropWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoCropRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoCrop(ctx context.Context, body PostVideoCropJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoCropRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostVideoExtractAudioWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostVideoExtractAudioRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -612,6 +1095,30 @@ func (c *Client) PostVideoExtractAudioWithBody(ctx context.Context, contentType 
 
 func (c *Client) PostVideoExtractAudio(ctx context.Context, body PostVideoExtractAudioJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostVideoExtractAudioRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoFramesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoFramesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoFrames(ctx context.Context, body PostVideoFramesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoFramesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -694,6 +1201,30 @@ func (c *Client) PostVideoMuxAudio(ctx context.Context, body PostVideoMuxAudioJS
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostVideoOverlayWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoOverlayRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoOverlay(ctx context.Context, body PostVideoOverlayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoOverlayRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostVideoRestoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostVideoRestoreRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -732,6 +1263,54 @@ func (c *Client) PostVideoScaleWithBody(ctx context.Context, contentType string,
 
 func (c *Client) PostVideoScale(ctx context.Context, body PostVideoScaleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostVideoScaleRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoScenesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoScenesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoScenes(ctx context.Context, body PostVideoScenesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoScenesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoSubtitlesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoSubtitlesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostVideoSubtitles(ctx context.Context, body PostVideoSubtitlesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostVideoSubtitlesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,6 +1619,86 @@ func NewGetJobRequest(server string, jobId JobIdPath) (*http.Request, error) {
 	return req, nil
 }
 
+// NewPostVideoAnalyzeRequest calls the generic PostVideoAnalyze builder with application/json body
+func NewPostVideoAnalyzeRequest(server string, body PostVideoAnalyzeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoAnalyzeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoAnalyzeRequestWithBody generates requests for PostVideoAnalyze with any type of body
+func NewPostVideoAnalyzeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/analyze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostVideoComposeRequest calls the generic PostVideoCompose builder with application/json body
+func NewPostVideoComposeRequest(server string, body PostVideoComposeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoComposeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoComposeRequestWithBody generates requests for PostVideoCompose with any type of body
+func NewPostVideoComposeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/compose")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostVideoConcatRequest calls the generic PostVideoConcat builder with application/json body
 func NewPostVideoConcatRequest(server string, body PostVideoConcatJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1080,6 +1739,46 @@ func NewPostVideoConcatRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
+// NewPostVideoCropRequest calls the generic PostVideoCrop builder with application/json body
+func NewPostVideoCropRequest(server string, body PostVideoCropJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoCropRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoCropRequestWithBody generates requests for PostVideoCrop with any type of body
+func NewPostVideoCropRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/crop")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostVideoExtractAudioRequest calls the generic PostVideoExtractAudio builder with application/json body
 func NewPostVideoExtractAudioRequest(server string, body PostVideoExtractAudioJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1101,6 +1800,46 @@ func NewPostVideoExtractAudioRequestWithBody(server string, contentType string, 
 	}
 
 	operationPath := fmt.Sprintf("/v1/video/extract_audio")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostVideoFramesRequest calls the generic PostVideoFrames builder with application/json body
+func NewPostVideoFramesRequest(server string, body PostVideoFramesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoFramesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoFramesRequestWithBody generates requests for PostVideoFrames with any type of body
+func NewPostVideoFramesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/frames")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1240,6 +1979,46 @@ func NewPostVideoMuxAudioRequestWithBody(server string, contentType string, body
 	return req, nil
 }
 
+// NewPostVideoOverlayRequest calls the generic PostVideoOverlay builder with application/json body
+func NewPostVideoOverlayRequest(server string, body PostVideoOverlayJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoOverlayRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoOverlayRequestWithBody generates requests for PostVideoOverlay with any type of body
+func NewPostVideoOverlayRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/overlay")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostVideoRestoreRequest calls the generic PostVideoRestore builder with application/json body
 func NewPostVideoRestoreRequest(server string, body PostVideoRestoreJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1301,6 +2080,86 @@ func NewPostVideoScaleRequestWithBody(server string, contentType string, body io
 	}
 
 	operationPath := fmt.Sprintf("/v1/video/scale")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostVideoScenesRequest calls the generic PostVideoScenes builder with application/json body
+func NewPostVideoScenesRequest(server string, body PostVideoScenesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoScenesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoScenesRequestWithBody generates requests for PostVideoScenes with any type of body
+func NewPostVideoScenesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/scenes")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostVideoSubtitlesRequest calls the generic PostVideoSubtitles builder with application/json body
+func NewPostVideoSubtitlesRequest(server string, body PostVideoSubtitlesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostVideoSubtitlesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostVideoSubtitlesRequestWithBody generates requests for PostVideoSubtitles with any type of body
+func NewPostVideoSubtitlesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/video/subtitles")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1504,15 +2363,35 @@ type ClientWithResponsesInterface interface {
 	// GetJobWithResponse request
 	GetJobWithResponse(ctx context.Context, jobId JobIdPath, reqEditors ...RequestEditorFn) (*GetJobHTTPResponse, error)
 
+	// PostVideoAnalyzeWithBodyWithResponse request with any body
+	PostVideoAnalyzeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error)
+
+	PostVideoAnalyzeWithResponse(ctx context.Context, body PostVideoAnalyzeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error)
+
+	// PostVideoComposeWithBodyWithResponse request with any body
+	PostVideoComposeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoComposeHTTPResponse, error)
+
+	PostVideoComposeWithResponse(ctx context.Context, body PostVideoComposeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoComposeHTTPResponse, error)
+
 	// PostVideoConcatWithBodyWithResponse request with any body
 	PostVideoConcatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoConcatHTTPResponse, error)
 
 	PostVideoConcatWithResponse(ctx context.Context, body PostVideoConcatJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoConcatHTTPResponse, error)
 
+	// PostVideoCropWithBodyWithResponse request with any body
+	PostVideoCropWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoCropHTTPResponse, error)
+
+	PostVideoCropWithResponse(ctx context.Context, body PostVideoCropJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoCropHTTPResponse, error)
+
 	// PostVideoExtractAudioWithBodyWithResponse request with any body
 	PostVideoExtractAudioWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoExtractAudioHTTPResponse, error)
 
 	PostVideoExtractAudioWithResponse(ctx context.Context, body PostVideoExtractAudioJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoExtractAudioHTTPResponse, error)
+
+	// PostVideoFramesWithBodyWithResponse request with any body
+	PostVideoFramesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoFramesHTTPResponse, error)
+
+	PostVideoFramesWithResponse(ctx context.Context, body PostVideoFramesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoFramesHTTPResponse, error)
 
 	// PostVideoInfoWithBodyWithResponse request with any body
 	PostVideoInfoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoInfoHTTPResponse, error)
@@ -1529,6 +2408,11 @@ type ClientWithResponsesInterface interface {
 
 	PostVideoMuxAudioWithResponse(ctx context.Context, body PostVideoMuxAudioJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoMuxAudioHTTPResponse, error)
 
+	// PostVideoOverlayWithBodyWithResponse request with any body
+	PostVideoOverlayWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoOverlayHTTPResponse, error)
+
+	PostVideoOverlayWithResponse(ctx context.Context, body PostVideoOverlayJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoOverlayHTTPResponse, error)
+
 	// PostVideoRestoreWithBodyWithResponse request with any body
 	PostVideoRestoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoRestoreHTTPResponse, error)
 
@@ -1538,6 +2422,16 @@ type ClientWithResponsesInterface interface {
 	PostVideoScaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoScaleHTTPResponse, error)
 
 	PostVideoScaleWithResponse(ctx context.Context, body PostVideoScaleJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoScaleHTTPResponse, error)
+
+	// PostVideoScenesWithBodyWithResponse request with any body
+	PostVideoScenesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoScenesHTTPResponse, error)
+
+	PostVideoScenesWithResponse(ctx context.Context, body PostVideoScenesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoScenesHTTPResponse, error)
+
+	// PostVideoSubtitlesWithBodyWithResponse request with any body
+	PostVideoSubtitlesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoSubtitlesHTTPResponse, error)
+
+	PostVideoSubtitlesWithResponse(ctx context.Context, body PostVideoSubtitlesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoSubtitlesHTTPResponse, error)
 
 	// PostVideoThumbnailGridWithBodyWithResponse request with any body
 	PostVideoThumbnailGridWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoThumbnailGridHTTPResponse, error)
@@ -1717,12 +2611,72 @@ func (r GetJobHTTPResponse) StatusCode() int {
 	return 0
 }
 
+type PostVideoAnalyzeHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoAnalyzeHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoAnalyzeHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostVideoComposeHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoComposeHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoComposeHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostVideoConcatHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *struct {
 		union json.RawMessage
 	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
 }
 
 // Status returns HTTPResponse.Status
@@ -1735,6 +2689,35 @@ func (r PostVideoConcatHTTPResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostVideoConcatHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostVideoCropHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoCropHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoCropHTTPResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1759,6 +2742,35 @@ func (r PostVideoExtractAudioHTTPResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostVideoExtractAudioHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostVideoFramesHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoFramesHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoFramesHTTPResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1842,6 +2854,35 @@ func (r PostVideoMuxAudioHTTPResponse) StatusCode() int {
 	return 0
 }
 
+type PostVideoOverlayHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoOverlayHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoOverlayHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostVideoRestoreHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1894,12 +2935,72 @@ func (r PostVideoScaleHTTPResponse) StatusCode() int {
 	return 0
 }
 
+type PostVideoScenesHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoScenesHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoScenesHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostVideoSubtitlesHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
+	JSON401 *N401
+	JSON404 *N404
+	JSON422 *N422
+}
+
+// Status returns HTTPResponse.Status
+func (r PostVideoSubtitlesHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostVideoSubtitlesHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostVideoThumbnailGridHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *struct {
 		union json.RawMessage
 	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
 }
 
 // Status returns HTTPResponse.Status
@@ -1924,6 +3025,8 @@ type PostVideoTranscodeHTTPResponse struct {
 	JSON200      *struct {
 		union json.RawMessage
 	}
+	JSON202 *JobAcceptedResponse
+	JSON400 *N400
 }
 
 // Status returns HTTPResponse.Status
@@ -2031,6 +3134,40 @@ func (c *ClientWithResponses) GetJobWithResponse(ctx context.Context, jobId JobI
 	return ParseGetJobHTTPResponse(rsp)
 }
 
+// PostVideoAnalyzeWithBodyWithResponse request with arbitrary body returning *PostVideoAnalyzeHTTPResponse
+func (c *ClientWithResponses) PostVideoAnalyzeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error) {
+	rsp, err := c.PostVideoAnalyzeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoAnalyzeHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoAnalyzeWithResponse(ctx context.Context, body PostVideoAnalyzeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoAnalyzeHTTPResponse, error) {
+	rsp, err := c.PostVideoAnalyze(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoAnalyzeHTTPResponse(rsp)
+}
+
+// PostVideoComposeWithBodyWithResponse request with arbitrary body returning *PostVideoComposeHTTPResponse
+func (c *ClientWithResponses) PostVideoComposeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoComposeHTTPResponse, error) {
+	rsp, err := c.PostVideoComposeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoComposeHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoComposeWithResponse(ctx context.Context, body PostVideoComposeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoComposeHTTPResponse, error) {
+	rsp, err := c.PostVideoCompose(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoComposeHTTPResponse(rsp)
+}
+
 // PostVideoConcatWithBodyWithResponse request with arbitrary body returning *PostVideoConcatHTTPResponse
 func (c *ClientWithResponses) PostVideoConcatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoConcatHTTPResponse, error) {
 	rsp, err := c.PostVideoConcatWithBody(ctx, contentType, body, reqEditors...)
@@ -2048,6 +3185,23 @@ func (c *ClientWithResponses) PostVideoConcatWithResponse(ctx context.Context, b
 	return ParsePostVideoConcatHTTPResponse(rsp)
 }
 
+// PostVideoCropWithBodyWithResponse request with arbitrary body returning *PostVideoCropHTTPResponse
+func (c *ClientWithResponses) PostVideoCropWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoCropHTTPResponse, error) {
+	rsp, err := c.PostVideoCropWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoCropHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoCropWithResponse(ctx context.Context, body PostVideoCropJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoCropHTTPResponse, error) {
+	rsp, err := c.PostVideoCrop(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoCropHTTPResponse(rsp)
+}
+
 // PostVideoExtractAudioWithBodyWithResponse request with arbitrary body returning *PostVideoExtractAudioHTTPResponse
 func (c *ClientWithResponses) PostVideoExtractAudioWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoExtractAudioHTTPResponse, error) {
 	rsp, err := c.PostVideoExtractAudioWithBody(ctx, contentType, body, reqEditors...)
@@ -2063,6 +3217,23 @@ func (c *ClientWithResponses) PostVideoExtractAudioWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParsePostVideoExtractAudioHTTPResponse(rsp)
+}
+
+// PostVideoFramesWithBodyWithResponse request with arbitrary body returning *PostVideoFramesHTTPResponse
+func (c *ClientWithResponses) PostVideoFramesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoFramesHTTPResponse, error) {
+	rsp, err := c.PostVideoFramesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoFramesHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoFramesWithResponse(ctx context.Context, body PostVideoFramesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoFramesHTTPResponse, error) {
+	rsp, err := c.PostVideoFrames(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoFramesHTTPResponse(rsp)
 }
 
 // PostVideoInfoWithBodyWithResponse request with arbitrary body returning *PostVideoInfoHTTPResponse
@@ -2116,6 +3287,23 @@ func (c *ClientWithResponses) PostVideoMuxAudioWithResponse(ctx context.Context,
 	return ParsePostVideoMuxAudioHTTPResponse(rsp)
 }
 
+// PostVideoOverlayWithBodyWithResponse request with arbitrary body returning *PostVideoOverlayHTTPResponse
+func (c *ClientWithResponses) PostVideoOverlayWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoOverlayHTTPResponse, error) {
+	rsp, err := c.PostVideoOverlayWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoOverlayHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoOverlayWithResponse(ctx context.Context, body PostVideoOverlayJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoOverlayHTTPResponse, error) {
+	rsp, err := c.PostVideoOverlay(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoOverlayHTTPResponse(rsp)
+}
+
 // PostVideoRestoreWithBodyWithResponse request with arbitrary body returning *PostVideoRestoreHTTPResponse
 func (c *ClientWithResponses) PostVideoRestoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoRestoreHTTPResponse, error) {
 	rsp, err := c.PostVideoRestoreWithBody(ctx, contentType, body, reqEditors...)
@@ -2148,6 +3336,40 @@ func (c *ClientWithResponses) PostVideoScaleWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParsePostVideoScaleHTTPResponse(rsp)
+}
+
+// PostVideoScenesWithBodyWithResponse request with arbitrary body returning *PostVideoScenesHTTPResponse
+func (c *ClientWithResponses) PostVideoScenesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoScenesHTTPResponse, error) {
+	rsp, err := c.PostVideoScenesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoScenesHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoScenesWithResponse(ctx context.Context, body PostVideoScenesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoScenesHTTPResponse, error) {
+	rsp, err := c.PostVideoScenes(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoScenesHTTPResponse(rsp)
+}
+
+// PostVideoSubtitlesWithBodyWithResponse request with arbitrary body returning *PostVideoSubtitlesHTTPResponse
+func (c *ClientWithResponses) PostVideoSubtitlesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostVideoSubtitlesHTTPResponse, error) {
+	rsp, err := c.PostVideoSubtitlesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoSubtitlesHTTPResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostVideoSubtitlesWithResponse(ctx context.Context, body PostVideoSubtitlesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostVideoSubtitlesHTTPResponse, error) {
+	rsp, err := c.PostVideoSubtitles(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostVideoSubtitlesHTTPResponse(rsp)
 }
 
 // PostVideoThumbnailGridWithBodyWithResponse request with arbitrary body returning *PostVideoThumbnailGridHTTPResponse
@@ -2439,6 +3661,132 @@ func ParseGetJobHTTPResponse(rsp *http.Response) (*GetJobHTTPResponse, error) {
 	return response, nil
 }
 
+// ParsePostVideoAnalyzeHTTPResponse parses an HTTP response from a PostVideoAnalyzeWithResponse call
+func ParsePostVideoAnalyzeHTTPResponse(rsp *http.Response) (*PostVideoAnalyzeHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoAnalyzeHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostVideoComposeHTTPResponse parses an HTTP response from a PostVideoComposeWithResponse call
+func ParsePostVideoComposeHTTPResponse(rsp *http.Response) (*PostVideoComposeHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoComposeHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostVideoConcatHTTPResponse parses an HTTP response from a PostVideoConcatWithResponse call
 func ParsePostVideoConcatHTTPResponse(rsp *http.Response) (*PostVideoConcatHTTPResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2461,6 +3809,83 @@ func ParsePostVideoConcatHTTPResponse(rsp *http.Response) (*PostVideoConcatHTTPR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostVideoCropHTTPResponse parses an HTTP response from a PostVideoCropWithResponse call
+func ParsePostVideoCropHTTPResponse(rsp *http.Response) (*PostVideoCropHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoCropHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -2489,6 +3914,69 @@ func ParsePostVideoExtractAudioHTTPResponse(rsp *http.Response) (*PostVideoExtra
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostVideoFramesHTTPResponse parses an HTTP response from a PostVideoFramesWithResponse call
+func ParsePostVideoFramesHTTPResponse(rsp *http.Response) (*PostVideoFramesHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoFramesHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -2626,6 +4114,69 @@ func ParsePostVideoMuxAudioHTTPResponse(rsp *http.Response) (*PostVideoMuxAudioH
 	return response, nil
 }
 
+// ParsePostVideoOverlayHTTPResponse parses an HTTP response from a PostVideoOverlayWithResponse call
+func ParsePostVideoOverlayHTTPResponse(rsp *http.Response) (*PostVideoOverlayHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoOverlayHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostVideoRestoreHTTPResponse parses an HTTP response from a PostVideoRestoreWithResponse call
 func ParsePostVideoRestoreHTTPResponse(rsp *http.Response) (*PostVideoRestoreHTTPResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2710,6 +4261,132 @@ func ParsePostVideoScaleHTTPResponse(rsp *http.Response) (*PostVideoScaleHTTPRes
 	return response, nil
 }
 
+// ParsePostVideoScenesHTTPResponse parses an HTTP response from a PostVideoScenesWithResponse call
+func ParsePostVideoScenesHTTPResponse(rsp *http.Response) (*PostVideoScenesHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoScenesHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostVideoSubtitlesHTTPResponse parses an HTTP response from a PostVideoSubtitlesWithResponse call
+func ParsePostVideoSubtitlesHTTPResponse(rsp *http.Response) (*PostVideoSubtitlesHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostVideoSubtitlesHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest N422
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostVideoThumbnailGridHTTPResponse parses an HTTP response from a PostVideoThumbnailGridWithResponse call
 func ParsePostVideoThumbnailGridHTTPResponse(rsp *http.Response) (*PostVideoThumbnailGridHTTPResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2732,6 +4409,20 @@ func ParsePostVideoThumbnailGridHTTPResponse(rsp *http.Response) (*PostVideoThum
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
@@ -2760,6 +4451,20 @@ func ParsePostVideoTranscodeHTTPResponse(rsp *http.Response) (*PostVideoTranscod
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAcceptedResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 

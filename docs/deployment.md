@@ -133,3 +133,5 @@ Then start it again with the same `docker run`. Everything worth keeping is in `
 ## Behind aigate
 
 [aigate](https://github.com/psyb0t/aigate) runs flickies as an optional service: `FLICKIES=1` mounts the CPU image at `/flickies/` and `FLICKIES_CUDA=1` mounts the CUDA image at `/flickies-cuda/`, both sharing one data directory.
+
+Both runtime images include ImageMagick and DejaVu fonts for timed text overlays. FFmpeg handles video decoding, composition and encoding.

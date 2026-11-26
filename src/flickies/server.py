@@ -21,11 +21,12 @@ import tempfile
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from flickies import __version__
@@ -52,6 +53,7 @@ from flickies.files import (
 )
 from flickies.files import (
     files_dir,
+    resolve_existing,
     resolve_safe,
     save_stream,
     stream_file,
@@ -62,6 +64,19 @@ from flickies.middleware import (
     RateLimitMiddleware,
     RequestIdMiddleware,
 )
+from flickies.video_edits import (
+    Compose,
+    Crop,
+    GridStyle,
+    Overlay,
+    QualityAnalysis,
+    SampleFrames,
+    Scenes,
+    Subtitles,
+    Transition,
+)
+
+_EditSpec = TypeVar("_EditSpec", bound=BaseModel)
 
 _log = logging.getLogger("flickies.server")
 
@@ -111,7 +126,7 @@ async def _resolve_input(
             "must provide exactly one of: file_path, file_url",
         )
     if file_path:
-        return resolve_safe(files_dir(cfg.data_dir), file_path), False
+        return resolve_existing(files_dir(cfg.data_dir), file_path), False
     assert file_url is not None
     tmp = await fetch_to_temp(file_url, suffix=suffix)
     return tmp, True
@@ -405,7 +420,10 @@ def build_app() -> FastAPI:
             preallocated_id = str(_uuid.uuid4())
 
             async def runner() -> dict[str, Any]:
-                tmp = Path(tempfile.mkstemp(prefix="flickies-out-", suffix=f".{ext}")[1])
+                with tempfile.NamedTemporaryFile(
+                    prefix="flickies-out-", suffix=f".{ext}", delete=False
+                ) as file:
+                    tmp = Path(file.name)
                 try:
                     await _maybe_await(work(tmp))
                     job_path = _async_staged_path(cfg, ext, preallocated_id)
@@ -529,24 +547,20 @@ def build_app() -> FastAPI:
         ext: str,
         op_factory: Callable[[FFmpeg, Path, Path], asyncio.Future[Any] | Any],
     ) -> JSONResponse:
-        tmp_to_clean: list[Path] = []
-
         async def work(out: Path) -> None:
             src, is_tmp = await _resolve_input(
                 cfg,
                 file_path=body.get("file_path"),
                 file_url=body.get("file_url"),
             )
-            if is_tmp:
-                tmp_to_clean.append(src)
-            await _maybe_await(op_factory(ffmpeg, src, out))
+            try:
+                await _maybe_await(op_factory(ffmpeg, src, out))
+            finally:
+                if is_tmp:
+                    with suppress(OSError):
+                        src.unlink()
 
-        try:
-            status, payload = await _run_or_schedule(body, ext, work)
-        finally:
-            for p in tmp_to_clean:
-                with suppress(OSError):
-                    p.unlink()
+        status, payload = await _run_or_schedule(body, ext, work)
         return JSONResponse(status_code=status, content=payload)
 
     # ── ffmpeg-ops routes ──────────────────────────────────────────────
@@ -573,33 +587,54 @@ def build_app() -> FastAPI:
                 400, CODE_BAD_REQUEST, "exactly one of inputs_paths / inputs_urls required"
             )
 
-        tmp_to_clean: list[Path] = []
+        try:
+            if not isinstance(inputs_paths or inputs_urls, list) or not all(
+                isinstance(item, str) and item for item in (inputs_paths or inputs_urls)
+            ):
+                raise ValueError
+            raw_transitions = body.get("transitions")
+            if raw_transitions is not None and not isinstance(raw_transitions, list):
+                raise ValueError
+            transitions = (
+                [Transition.model_validate(item) for item in raw_transitions]
+                if raw_transitions is not None
+                else None
+            )
+            if transitions is not None and (
+                not 2 <= len(inputs_paths or inputs_urls) <= 16
+                or len(transitions) != len(inputs_paths or inputs_urls) - 1
+            ):
+                raise ValueError
+        except ValueError as exc:
+            raise http_error(
+                400, CODE_BAD_REQUEST, "invalid inputs or transitions for concat"
+            ) from exc
 
         precise = bool(body.get("precise", False))
 
         async def work(out: Path) -> None:
-            if inputs_urls:
-                resolved: list[Path] = []
-                for url in inputs_urls:
-                    t = await fetch_to_temp(url, suffix=".mp4")
-                    resolved.append(t)
-                    tmp_to_clean.append(t)
-                await ffmpeg.concat(resolved, out, precise=precise)
-            else:
-                resolved = [resolve_safe(files_dir(cfg.data_dir), p) for p in inputs_paths]
-                await ffmpeg.concat(resolved, out, precise=precise)
+            temporary: list[Path] = []
+            try:
+                if inputs_urls:
+                    for url in inputs_urls:
+                        temporary.append(await fetch_to_temp(url, suffix=".mp4"))
+                    resolved = temporary
+                else:
+                    resolved = [resolve_existing(files_dir(cfg.data_dir), p) for p in inputs_paths]
+                await ffmpeg.concat(resolved, out, precise=precise, transitions=transitions)
+            finally:
+                for path in temporary:
+                    with suppress(OSError):
+                        path.unlink()
 
-        try:
-            status, payload = await _run_or_schedule(body, "mp4", work)
-        finally:
-            for p in tmp_to_clean:
-                with suppress(OSError):
-                    p.unlink()
+        status, payload = await _run_or_schedule(body, "mp4", work)
         return JSONResponse(status_code=status, content=payload)
 
     @app.post("/v1/video/transcode")
     async def post_transcode(body: dict[str, Any]) -> JSONResponse:
         ext = body.get("output_format", "mp4")
+        if not isinstance(ext, str) or ext not in {"mp4", "webm", "mov", "mkv", "gif"}:
+            raise http_error(400, CODE_BAD_REQUEST, "unsupported output_format")
         return await _ffmpeg_handler(
             body,
             ext,
@@ -613,6 +648,7 @@ def build_app() -> FastAPI:
                 preset=body.get("preset"),
                 fps=body.get("fps"),
                 gif_options=body.get("gif_options"),
+                max_size_bytes=body.get("max_size_bytes"),
             ),
         )
 
@@ -670,6 +706,7 @@ def build_app() -> FastAPI:
 
     @app.post("/v1/video/thumbnail_grid")
     async def post_thumbnail_grid(body: dict[str, Any]) -> JSONResponse:
+        style = _edit_spec(GridStyle, body)
         return await _ffmpeg_handler(
             body,
             "png",
@@ -680,8 +717,75 @@ def build_app() -> FastAPI:
                 cols=int(body["cols"]),
                 cell_width=int(body.get("cell_width", 320)),
                 cell_height=int(body.get("cell_height", 180)),
+                timestamps=style.timestamps,
+                layout=style.layout,
             ),
         )
+
+    def _edit_spec(model: type[_EditSpec], body: dict[str, Any]) -> _EditSpec:
+        try:
+            return model.model_validate(body)
+        except ValidationError as exc:
+            details = [
+                {"field": ".".join(map(str, err["loc"])), "message": err["msg"]}
+                for err in exc.errors()
+            ]
+            raise http_error(
+                400, CODE_BAD_REQUEST, "invalid video options", fields=details
+            ) from exc
+
+    @app.post("/v1/video/subtitles")
+    async def post_subtitles(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(Subtitles, body)
+        subtitle = (
+            resolve_existing(files_dir(cfg.data_dir), spec.subtitle_path)
+            if spec.subtitle_path
+            else None
+        )
+        return await _ffmpeg_handler(
+            body, "mp4", lambda eng, src, out: eng.subtitles(src, out, spec, subtitle)
+        )
+
+    @app.post("/v1/video/overlay")
+    async def post_overlay(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(Overlay, body)
+        image = (
+            resolve_existing(files_dir(cfg.data_dir), spec.image_path) if spec.image_path else None
+        )
+        return await _ffmpeg_handler(
+            body, "mp4", lambda eng, src, out: eng.overlay(src, out, spec, image)
+        )
+
+    @app.post("/v1/video/crop")
+    async def post_crop(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(Crop, body)
+        return await _ffmpeg_handler(body, "mp4", lambda eng, src, out: eng.crop(src, out, spec))
+
+    @app.post("/v1/video/compose")
+    async def post_compose(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(Compose, body)
+        second = resolve_existing(files_dir(cfg.data_dir), spec.second_path)
+        return await _ffmpeg_handler(
+            body, "mp4", lambda eng, src, out: eng.compose(src, out, second, spec)
+        )
+
+    @app.post("/v1/video/scenes")
+    async def post_scenes(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(Scenes, body)
+        ext = "json" if spec.artifacts == "none" else "zip"
+        return await _ffmpeg_handler(body, ext, lambda eng, src, out: eng.scenes(src, out, spec))
+
+    @app.post("/v1/video/analyze")
+    async def post_analyze(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(QualityAnalysis, body)
+        return await _ffmpeg_handler(
+            body, "json", lambda eng, src, out: eng.analyze(src, out, spec)
+        )
+
+    @app.post("/v1/video/frames")
+    async def post_frames(body: dict[str, Any]) -> JSONResponse:
+        spec = _edit_spec(SampleFrames, body)
+        return await _ffmpeg_handler(body, "zip", lambda eng, src, out: eng.frames(src, out, spec))
 
     @app.post("/v1/video/info")
     async def post_info(body: dict[str, Any]) -> dict[str, Any]:

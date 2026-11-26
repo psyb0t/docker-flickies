@@ -26,7 +26,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/data/hf
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg \
+        ffmpeg imagemagick fonts-dejavu-core \
         curl \
         ca-certificates \
         libgl1 \

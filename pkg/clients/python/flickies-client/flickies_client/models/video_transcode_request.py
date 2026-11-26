@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.base_video_output_request_output_format import BaseVideoOutputRequestOutputFormat
+from ..models.video_transcode_request_output_format import VideoTranscodeRequestOutputFormat
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
@@ -24,58 +22,62 @@ class VideoTranscodeRequest:
     to the re-encode; gif-specific options live under `gif_options`.
 
         Attributes:
-            file_path (None | str | Unset): FILES_DIR-relative path of an already-uploaded video.
-            file_url (None | str | Unset): HTTP(S) URL the server fetches.
-            output_path (None | str | Unset):
-            output_url (None | str | Unset):
-            async_job (bool | Unset):  Default: False.
-            webhook_url (None | str | Unset): Notify URL on async completion (HMAC-signed).
-            output_format (BaseVideoOutputRequestOutputFormat | Unset):  Default: BaseVideoOutputRequestOutputFormat.MP4.
-            video_codec (None | str | Unset):
-            audio_codec (None | str | Unset):
-            crf (int | None | Unset):
-            preset (None | str | Unset):
-            fps (float | None | Unset): Re-encode at this frame rate. Applies to all output formats.
-            gif_options (None | Unset | VideoTranscodeRequestGifOptionsType0): Only consulted when output_format=gif.
+            file_path (Union[None, Unset, str]): Staged input path. Provide exactly one input.
+            file_url (Union[None, Unset, str]): HTTP(S) input URL.
+            output_path (Union[None, Unset, str]): Staged output path in synchronous mode.
+            output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
+            async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
+            webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
+            output_format (Union[Unset, VideoTranscodeRequestOutputFormat]):  Default:
+                VideoTranscodeRequestOutputFormat.MP4.
+            max_size_bytes (Union[None, Unset, int]): MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with
+                CRF.
+            video_codec (Union[None, Unset, str]):
+            audio_codec (Union[None, Unset, str]):
+            crf (Union[None, Unset, int]):
+            preset (Union[None, Unset, str]):
+            fps (Union[None, Unset, float]): Re-encode at this frame rate. Applies to all output formats.
+            gif_options (Union['VideoTranscodeRequestGifOptionsType0', None, Unset]): Only consulted when output_format=gif.
     """
 
-    file_path: None | str | Unset = UNSET
-    file_url: None | str | Unset = UNSET
-    output_path: None | str | Unset = UNSET
-    output_url: None | str | Unset = UNSET
-    async_job: bool | Unset = False
-    webhook_url: None | str | Unset = UNSET
-    output_format: BaseVideoOutputRequestOutputFormat | Unset = BaseVideoOutputRequestOutputFormat.MP4
-    video_codec: None | str | Unset = UNSET
-    audio_codec: None | str | Unset = UNSET
-    crf: int | None | Unset = UNSET
-    preset: None | str | Unset = UNSET
-    fps: float | None | Unset = UNSET
-    gif_options: None | Unset | VideoTranscodeRequestGifOptionsType0 = UNSET
+    file_path: Union[None, Unset, str] = UNSET
+    file_url: Union[None, Unset, str] = UNSET
+    output_path: Union[None, Unset, str] = UNSET
+    output_url: Union[None, Unset, str] = UNSET
+    async_job: Union[Unset, bool] = False
+    webhook_url: Union[None, Unset, str] = UNSET
+    output_format: Union[Unset, VideoTranscodeRequestOutputFormat] = VideoTranscodeRequestOutputFormat.MP4
+    max_size_bytes: Union[None, Unset, int] = UNSET
+    video_codec: Union[None, Unset, str] = UNSET
+    audio_codec: Union[None, Unset, str] = UNSET
+    crf: Union[None, Unset, int] = UNSET
+    preset: Union[None, Unset, str] = UNSET
+    fps: Union[None, Unset, float] = UNSET
+    gif_options: Union["VideoTranscodeRequestGifOptionsType0", None, Unset] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.video_transcode_request_gif_options_type_0 import VideoTranscodeRequestGifOptionsType0
 
-        file_path: None | str | Unset
+        file_path: Union[None, Unset, str]
         if isinstance(self.file_path, Unset):
             file_path = UNSET
         else:
             file_path = self.file_path
 
-        file_url: None | str | Unset
+        file_url: Union[None, Unset, str]
         if isinstance(self.file_url, Unset):
             file_url = UNSET
         else:
             file_url = self.file_url
 
-        output_path: None | str | Unset
+        output_path: Union[None, Unset, str]
         if isinstance(self.output_path, Unset):
             output_path = UNSET
         else:
             output_path = self.output_path
 
-        output_url: None | str | Unset
+        output_url: Union[None, Unset, str]
         if isinstance(self.output_url, Unset):
             output_url = UNSET
         else:
@@ -83,47 +85,53 @@ class VideoTranscodeRequest:
 
         async_job = self.async_job
 
-        webhook_url: None | str | Unset
+        webhook_url: Union[None, Unset, str]
         if isinstance(self.webhook_url, Unset):
             webhook_url = UNSET
         else:
             webhook_url = self.webhook_url
 
-        output_format: str | Unset = UNSET
+        output_format: Union[Unset, str] = UNSET
         if not isinstance(self.output_format, Unset):
             output_format = self.output_format.value
 
-        video_codec: None | str | Unset
+        max_size_bytes: Union[None, Unset, int]
+        if isinstance(self.max_size_bytes, Unset):
+            max_size_bytes = UNSET
+        else:
+            max_size_bytes = self.max_size_bytes
+
+        video_codec: Union[None, Unset, str]
         if isinstance(self.video_codec, Unset):
             video_codec = UNSET
         else:
             video_codec = self.video_codec
 
-        audio_codec: None | str | Unset
+        audio_codec: Union[None, Unset, str]
         if isinstance(self.audio_codec, Unset):
             audio_codec = UNSET
         else:
             audio_codec = self.audio_codec
 
-        crf: int | None | Unset
+        crf: Union[None, Unset, int]
         if isinstance(self.crf, Unset):
             crf = UNSET
         else:
             crf = self.crf
 
-        preset: None | str | Unset
+        preset: Union[None, Unset, str]
         if isinstance(self.preset, Unset):
             preset = UNSET
         else:
             preset = self.preset
 
-        fps: float | None | Unset
+        fps: Union[None, Unset, float]
         if isinstance(self.fps, Unset):
             fps = UNSET
         else:
             fps = self.fps
 
-        gif_options: dict[str, Any] | None | Unset
+        gif_options: Union[None, Unset, dict[str, Any]]
         if isinstance(self.gif_options, Unset):
             gif_options = UNSET
         elif isinstance(self.gif_options, VideoTranscodeRequestGifOptionsType0):
@@ -148,6 +156,8 @@ class VideoTranscodeRequest:
             field_dict["webhook_url"] = webhook_url
         if output_format is not UNSET:
             field_dict["output_format"] = output_format
+        if max_size_bytes is not UNSET:
+            field_dict["max_size_bytes"] = max_size_bytes
         if video_codec is not UNSET:
             field_dict["video_codec"] = video_codec
         if audio_codec is not UNSET:
@@ -169,106 +179,115 @@ class VideoTranscodeRequest:
 
         d = dict(src_dict)
 
-        def _parse_file_path(data: object) -> None | str | Unset:
+        def _parse_file_path(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         file_path = _parse_file_path(d.pop("file_path", UNSET))
 
-        def _parse_file_url(data: object) -> None | str | Unset:
+        def _parse_file_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         file_url = _parse_file_url(d.pop("file_url", UNSET))
 
-        def _parse_output_path(data: object) -> None | str | Unset:
+        def _parse_output_path(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_path = _parse_output_path(d.pop("output_path", UNSET))
 
-        def _parse_output_url(data: object) -> None | str | Unset:
+        def _parse_output_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_url = _parse_output_url(d.pop("output_url", UNSET))
 
         async_job = d.pop("async_job", UNSET)
 
-        def _parse_webhook_url(data: object) -> None | str | Unset:
+        def _parse_webhook_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         webhook_url = _parse_webhook_url(d.pop("webhook_url", UNSET))
 
         _output_format = d.pop("output_format", UNSET)
-        output_format: BaseVideoOutputRequestOutputFormat | Unset
+        output_format: Union[Unset, VideoTranscodeRequestOutputFormat]
         if isinstance(_output_format, Unset):
             output_format = UNSET
         else:
-            output_format = BaseVideoOutputRequestOutputFormat(_output_format)
+            output_format = VideoTranscodeRequestOutputFormat(_output_format)
 
-        def _parse_video_codec(data: object) -> None | str | Unset:
+        def _parse_max_size_bytes(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, int], data)
+
+        max_size_bytes = _parse_max_size_bytes(d.pop("max_size_bytes", UNSET))
+
+        def _parse_video_codec(data: object) -> Union[None, Unset, str]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(Union[None, Unset, str], data)
 
         video_codec = _parse_video_codec(d.pop("video_codec", UNSET))
 
-        def _parse_audio_codec(data: object) -> None | str | Unset:
+        def _parse_audio_codec(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         audio_codec = _parse_audio_codec(d.pop("audio_codec", UNSET))
 
-        def _parse_crf(data: object) -> int | None | Unset:
+        def _parse_crf(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(Union[None, Unset, int], data)
 
         crf = _parse_crf(d.pop("crf", UNSET))
 
-        def _parse_preset(data: object) -> None | str | Unset:
+        def _parse_preset(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         preset = _parse_preset(d.pop("preset", UNSET))
 
-        def _parse_fps(data: object) -> float | None | Unset:
+        def _parse_fps(data: object) -> Union[None, Unset, float]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(float | None | Unset, data)
+            return cast(Union[None, Unset, float], data)
 
         fps = _parse_fps(d.pop("fps", UNSET))
 
-        def _parse_gif_options(data: object) -> None | Unset | VideoTranscodeRequestGifOptionsType0:
+        def _parse_gif_options(data: object) -> Union["VideoTranscodeRequestGifOptionsType0", None, Unset]:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -279,9 +298,9 @@ class VideoTranscodeRequest:
                 gif_options_type_0 = VideoTranscodeRequestGifOptionsType0.from_dict(data)
 
                 return gif_options_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
+            except:  # noqa: E722
                 pass
-            return cast(None | Unset | VideoTranscodeRequestGifOptionsType0, data)
+            return cast(Union["VideoTranscodeRequestGifOptionsType0", None, Unset], data)
 
         gif_options = _parse_gif_options(d.pop("gif_options", UNSET))
 
@@ -293,6 +312,7 @@ class VideoTranscodeRequest:
             async_job=async_job,
             webhook_url=webhook_url,
             output_format=output_format,
+            max_size_bytes=max_size_bytes,
             video_codec=video_codec,
             audio_codec=audio_codec,
             crf=crf,

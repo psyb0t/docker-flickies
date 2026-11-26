@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -17,28 +15,29 @@ class BaseVideoOutputRequest:
     """Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
 
     Attributes:
-        output_path (None | str | Unset):
-        output_url (None | str | Unset):
-        async_job (bool | Unset):  Default: False.
-        webhook_url (None | str | Unset): Notify URL on async completion (HMAC-signed).
-        output_format (BaseVideoOutputRequestOutputFormat | Unset):  Default: BaseVideoOutputRequestOutputFormat.MP4.
+        output_path (Union[None, Unset, str]):
+        output_url (Union[None, Unset, str]):
+        async_job (Union[Unset, bool]):  Default: False.
+        webhook_url (Union[None, Unset, str]): Notify URL on async completion (HMAC-signed).
+        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]):  Default:
+            BaseVideoOutputRequestOutputFormat.MP4.
     """
 
-    output_path: None | str | Unset = UNSET
-    output_url: None | str | Unset = UNSET
-    async_job: bool | Unset = False
-    webhook_url: None | str | Unset = UNSET
-    output_format: BaseVideoOutputRequestOutputFormat | Unset = BaseVideoOutputRequestOutputFormat.MP4
+    output_path: Union[None, Unset, str] = UNSET
+    output_url: Union[None, Unset, str] = UNSET
+    async_job: Union[Unset, bool] = False
+    webhook_url: Union[None, Unset, str] = UNSET
+    output_format: Union[Unset, BaseVideoOutputRequestOutputFormat] = BaseVideoOutputRequestOutputFormat.MP4
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        output_path: None | str | Unset
+        output_path: Union[None, Unset, str]
         if isinstance(self.output_path, Unset):
             output_path = UNSET
         else:
             output_path = self.output_path
 
-        output_url: None | str | Unset
+        output_url: Union[None, Unset, str]
         if isinstance(self.output_url, Unset):
             output_url = UNSET
         else:
@@ -46,13 +45,13 @@ class BaseVideoOutputRequest:
 
         async_job = self.async_job
 
-        webhook_url: None | str | Unset
+        webhook_url: Union[None, Unset, str]
         if isinstance(self.webhook_url, Unset):
             webhook_url = UNSET
         else:
             webhook_url = self.webhook_url
 
-        output_format: str | Unset = UNSET
+        output_format: Union[Unset, str] = UNSET
         if not isinstance(self.output_format, Unset):
             output_format = self.output_format.value
 
@@ -76,37 +75,37 @@ class BaseVideoOutputRequest:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
 
-        def _parse_output_path(data: object) -> None | str | Unset:
+        def _parse_output_path(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_path = _parse_output_path(d.pop("output_path", UNSET))
 
-        def _parse_output_url(data: object) -> None | str | Unset:
+        def _parse_output_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_url = _parse_output_url(d.pop("output_url", UNSET))
 
         async_job = d.pop("async_job", UNSET)
 
-        def _parse_webhook_url(data: object) -> None | str | Unset:
+        def _parse_webhook_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         webhook_url = _parse_webhook_url(d.pop("webhook_url", UNSET))
 
         _output_format = d.pop("output_format", UNSET)
-        output_format: BaseVideoOutputRequestOutputFormat | Unset
+        output_format: Union[Unset, BaseVideoOutputRequestOutputFormat]
         if isinstance(_output_format, Unset):
             output_format = UNSET
         else:

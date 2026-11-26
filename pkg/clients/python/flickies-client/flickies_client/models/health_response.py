@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -20,8 +18,8 @@ class HealthResponse:
         device (str): auto / cpu / cuda
         available_engines (list[str]):
         noncommercial_enabled (bool):
-        enabled_engines (list[str] | Unset):
-        loaded_engine (None | str | Unset): Currently resident engine slug, or null if none loaded.
+        enabled_engines (Union[Unset, list[str]]):
+        loaded_engine (Union[None, Unset, str]): Currently resident engine slug, or null if none loaded.
     """
 
     status: str
@@ -29,8 +27,8 @@ class HealthResponse:
     device: str
     available_engines: list[str]
     noncommercial_enabled: bool
-    enabled_engines: list[str] | Unset = UNSET
-    loaded_engine: None | str | Unset = UNSET
+    enabled_engines: Union[Unset, list[str]] = UNSET
+    loaded_engine: Union[None, Unset, str] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -44,11 +42,11 @@ class HealthResponse:
 
         noncommercial_enabled = self.noncommercial_enabled
 
-        enabled_engines: list[str] | Unset = UNSET
+        enabled_engines: Union[Unset, list[str]] = UNSET
         if not isinstance(self.enabled_engines, Unset):
             enabled_engines = self.enabled_engines
 
-        loaded_engine: None | str | Unset
+        loaded_engine: Union[None, Unset, str]
         if isinstance(self.loaded_engine, Unset):
             loaded_engine = UNSET
         else:
@@ -87,12 +85,12 @@ class HealthResponse:
 
         enabled_engines = cast(list[str], d.pop("enabled_engines", UNSET))
 
-        def _parse_loaded_engine(data: object) -> None | str | Unset:
+        def _parse_loaded_engine(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         loaded_engine = _parse_loaded_engine(d.pop("loaded_engine", UNSET))
 

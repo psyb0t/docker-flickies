@@ -44,7 +44,7 @@ Everything except the image builds runs inside a dev container, so the host need
 | `make check` | `lint` then `test`. |
 | `make build`, `make build-cuda`, `make build-all` | Builds the CPU and CUDA images, tagged `v<version>` and `latest` (with `-cuda`). |
 | `make run`, `make run-cuda` | Builds and runs an image on `PORT` (default 8000) with `~/.flickies-data` as `/data`. |
-| `make docs` | Builds this site with GitHub's Pages image into `.testing/docs-site`. |
+| `make docs` | Builds this site with GitHub's Pages image into `website/build`. |
 | `make version` | Prints `v` and the version in `pyproject.toml`. |
 | `make clean` | Removes the local images and Python caches. |
 
@@ -76,7 +76,7 @@ The ML stack (torch, OpenCV, librosa, GFPGAN and, for CUDA, the LatentSync libra
 
 ## CI and releases
 
-[.github/workflows/pipeline.yml](https://github.com/psyb0t/docker-flickies/blob/main/.github/workflows/pipeline.yml) runs on every push:
+[.github/workflows/pipeline.yml](https://github.com/psyb0t/docker-flickies/blob/main/.github/workflows/pipeline.yml) runs on branch pushes and `v*` tags:
 
 - every branch: `make lint` and `make test`;
 - the default branch, after those pass: build, scan and push both images as `latest` and `sha-<commit>` (each with `-cuda` for the CUDA image), and refresh the README badges;

@@ -1,6 +1,5 @@
 from http import HTTPStatus
-from typing import Any
-from urllib.parse import quote
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -16,32 +15,27 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/v1/jobs/{job_id}".format(
-            job_id=quote(str(job_id), safe=""),
-        ),
+        "url": f"/v1/jobs/{job_id}",
     }
 
     return _kwargs
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> ErrorBody | JobStatusResponse | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[ErrorBody, JobStatusResponse]]:
     if response.status_code == 200:
         response_200 = JobStatusResponse.from_dict(response.json())
 
         return response_200
-
     if response.status_code == 401:
         response_401 = ErrorBody.from_dict(response.json())
 
         return response_401
-
     if response.status_code == 404:
         response_404 = ErrorBody.from_dict(response.json())
 
         return response_404
-
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -49,8 +43,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[ErrorBody | JobStatusResponse]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[ErrorBody, JobStatusResponse]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -62,8 +56,8 @@ def _build_response(
 def sync_detailed(
     job_id: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[ErrorBody | JobStatusResponse]:
+    client: Union[AuthenticatedClient, Client],
+) -> Response[Union[ErrorBody, JobStatusResponse]]:
     """
     Args:
         job_id (str):
@@ -73,7 +67,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | JobStatusResponse]
+        Response[Union[ErrorBody, JobStatusResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -90,8 +84,8 @@ def sync_detailed(
 def sync(
     job_id: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> ErrorBody | JobStatusResponse | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[Union[ErrorBody, JobStatusResponse]]:
     """
     Args:
         job_id (str):
@@ -101,7 +95,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | JobStatusResponse
+        Union[ErrorBody, JobStatusResponse]
     """
 
     return sync_detailed(
@@ -113,8 +107,8 @@ def sync(
 async def asyncio_detailed(
     job_id: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[ErrorBody | JobStatusResponse]:
+    client: Union[AuthenticatedClient, Client],
+) -> Response[Union[ErrorBody, JobStatusResponse]]:
     """
     Args:
         job_id (str):
@@ -124,7 +118,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | JobStatusResponse]
+        Response[Union[ErrorBody, JobStatusResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -139,8 +133,8 @@ async def asyncio_detailed(
 async def asyncio(
     job_id: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> ErrorBody | JobStatusResponse | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[Union[ErrorBody, JobStatusResponse]]:
     """
     Args:
         job_id (str):
@@ -150,7 +144,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | JobStatusResponse
+        Union[ErrorBody, JobStatusResponse]
     """
 
     return (

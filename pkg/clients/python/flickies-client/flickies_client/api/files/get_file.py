@@ -1,7 +1,6 @@
 from http import HTTPStatus
 from io import BytesIO
-from typing import Any
-from urllib.parse import quote
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -16,37 +15,36 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/v1/files/{path}".format(
-            path=quote(str(path), safe=""),
-        ),
+        "url": f"/v1/files/{path}",
     }
 
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> ErrorBody | File | None:
+def _parse_response(
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[ErrorBody, File]]:
     if response.status_code == 200:
         response_200 = File(payload=BytesIO(response.content))
 
         return response_200
-
     if response.status_code == 401:
         response_401 = ErrorBody.from_dict(response.json())
 
         return response_401
-
     if response.status_code == 404:
         response_404 = ErrorBody.from_dict(response.json())
 
         return response_404
-
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[ErrorBody | File]:
+def _build_response(
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[ErrorBody, File]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -58,8 +56,8 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[ErrorBody | File]:
+    client: Union[AuthenticatedClient, Client],
+) -> Response[Union[ErrorBody, File]]:
     """Download a staged file.
 
     Args:
@@ -70,7 +68,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | File]
+        Response[Union[ErrorBody, File]]
     """
 
     kwargs = _get_kwargs(
@@ -87,8 +85,8 @@ def sync_detailed(
 def sync(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> ErrorBody | File | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[Union[ErrorBody, File]]:
     """Download a staged file.
 
     Args:
@@ -99,7 +97,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | File
+        Union[ErrorBody, File]
     """
 
     return sync_detailed(
@@ -111,8 +109,8 @@ def sync(
 async def asyncio_detailed(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[ErrorBody | File]:
+    client: Union[AuthenticatedClient, Client],
+) -> Response[Union[ErrorBody, File]]:
     """Download a staged file.
 
     Args:
@@ -123,7 +121,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ErrorBody | File]
+        Response[Union[ErrorBody, File]]
     """
 
     kwargs = _get_kwargs(
@@ -138,8 +136,8 @@ async def asyncio_detailed(
 async def asyncio(
     path: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> ErrorBody | File | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[Union[ErrorBody, File]]:
     """Download a staged file.
 
     Args:
@@ -150,7 +148,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ErrorBody | File
+        Union[ErrorBody, File]
     """
 
     return (

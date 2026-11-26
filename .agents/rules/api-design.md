@@ -2,7 +2,7 @@
 
 Prefix: API.
 
-The surface: `GET /healthz`, `GET /v1/health`, `GET /v1/engines`, `DELETE /v1/engines/{slug}`, `PUT|GET|DELETE /v1/files/{path}`, `GET /v1/jobs/{job_id}`, `POST /v1/video/{lipsync,restore,trim,concat,transcode,scale,mux_audio,extract_audio,thumbnail_grid,info}`, and the MCP mount at `/v1/mcp`. All routes are in `build_app()` in `src/flickies/server.py`.
+The surface: `GET /healthz`, `GET /v1/health`, `GET /v1/engines`, `DELETE /v1/engines/{slug}`, `PUT|GET|DELETE /v1/files/{path}`, `GET /v1/jobs/{job_id}`, `POST /v1/video/{lipsync,restore,trim,concat,transcode,scale,mux_audio,extract_audio,thumbnail_grid,subtitles,overlay,crop,compose,scenes,analyze,frames,info}`, and the MCP mount at `/v1/mcp`. All routes are in `build_app()` in `src/flickies/server.py`.
 
 ## Contract
 

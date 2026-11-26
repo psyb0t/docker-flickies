@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, Union
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -21,13 +19,13 @@ class ErrorBody:
     Attributes:
         code (str): Machine-readable UPPER_SNAKE_CASE error code.
         message (str): Human-readable error description.
-        details (ErrorBodyDetails | Unset): Optional structured detail bag — field-by-field validation errors, upstream
-            provider IDs, etc.
+        details (Union[Unset, ErrorBodyDetails]): Optional structured detail bag — field-by-field validation errors,
+            upstream provider IDs, etc.
     """
 
     code: str
     message: str
-    details: ErrorBodyDetails | Unset = UNSET
+    details: Union[Unset, "ErrorBodyDetails"] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -35,7 +33,7 @@ class ErrorBody:
 
         message = self.message
 
-        details: dict[str, Any] | Unset = UNSET
+        details: Union[Unset, dict[str, Any]] = UNSET
         if not isinstance(self.details, Unset):
             details = self.details.to_dict()
 
@@ -62,7 +60,7 @@ class ErrorBody:
         message = d.pop("message")
 
         _details = d.pop("details", UNSET)
-        details: ErrorBodyDetails | Unset
+        details: Union[Unset, ErrorBodyDetails]
         if isinstance(_details, Unset):
             details = UNSET
         else:

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -18,14 +16,15 @@ class VideoTrimRequest:
     Attributes:
         start_sec (float):
         end_sec (float):
-        file_path (None | str | Unset): FILES_DIR-relative path of an already-uploaded video.
-        file_url (None | str | Unset): HTTP(S) URL the server fetches.
-        output_path (None | str | Unset):
-        output_url (None | str | Unset):
-        async_job (bool | Unset):  Default: False.
-        webhook_url (None | str | Unset): Notify URL on async completion (HMAC-signed).
-        output_format (BaseVideoOutputRequestOutputFormat | Unset):  Default: BaseVideoOutputRequestOutputFormat.MP4.
-        precise (bool | Unset): When false (default), trim uses `-c copy` for speed — fast, but
+        file_path (Union[None, Unset, str]): FILES_DIR-relative path of an already-uploaded video.
+        file_url (Union[None, Unset, str]): HTTP(S) URL the server fetches.
+        output_path (Union[None, Unset, str]):
+        output_url (Union[None, Unset, str]):
+        async_job (Union[Unset, bool]):  Default: False.
+        webhook_url (Union[None, Unset, str]): Notify URL on async completion (HMAC-signed).
+        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]):  Default:
+            BaseVideoOutputRequestOutputFormat.MP4.
+        precise (Union[Unset, bool]): When false (default), trim uses `-c copy` for speed — fast, but
             ffmpeg can only cut on keyframe boundaries, so `start_sec` snaps
             to the nearest keyframe and may eat up to one GOP (~seconds) of
             leading content. When true, trim re-encodes with H.264 + AAC for
@@ -36,14 +35,14 @@ class VideoTrimRequest:
 
     start_sec: float
     end_sec: float
-    file_path: None | str | Unset = UNSET
-    file_url: None | str | Unset = UNSET
-    output_path: None | str | Unset = UNSET
-    output_url: None | str | Unset = UNSET
-    async_job: bool | Unset = False
-    webhook_url: None | str | Unset = UNSET
-    output_format: BaseVideoOutputRequestOutputFormat | Unset = BaseVideoOutputRequestOutputFormat.MP4
-    precise: bool | Unset = False
+    file_path: Union[None, Unset, str] = UNSET
+    file_url: Union[None, Unset, str] = UNSET
+    output_path: Union[None, Unset, str] = UNSET
+    output_url: Union[None, Unset, str] = UNSET
+    async_job: Union[Unset, bool] = False
+    webhook_url: Union[None, Unset, str] = UNSET
+    output_format: Union[Unset, BaseVideoOutputRequestOutputFormat] = BaseVideoOutputRequestOutputFormat.MP4
+    precise: Union[Unset, bool] = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -51,25 +50,25 @@ class VideoTrimRequest:
 
         end_sec = self.end_sec
 
-        file_path: None | str | Unset
+        file_path: Union[None, Unset, str]
         if isinstance(self.file_path, Unset):
             file_path = UNSET
         else:
             file_path = self.file_path
 
-        file_url: None | str | Unset
+        file_url: Union[None, Unset, str]
         if isinstance(self.file_url, Unset):
             file_url = UNSET
         else:
             file_url = self.file_url
 
-        output_path: None | str | Unset
+        output_path: Union[None, Unset, str]
         if isinstance(self.output_path, Unset):
             output_path = UNSET
         else:
             output_path = self.output_path
 
-        output_url: None | str | Unset
+        output_url: Union[None, Unset, str]
         if isinstance(self.output_url, Unset):
             output_url = UNSET
         else:
@@ -77,13 +76,13 @@ class VideoTrimRequest:
 
         async_job = self.async_job
 
-        webhook_url: None | str | Unset
+        webhook_url: Union[None, Unset, str]
         if isinstance(self.webhook_url, Unset):
             webhook_url = UNSET
         else:
             webhook_url = self.webhook_url
 
-        output_format: str | Unset = UNSET
+        output_format: Union[Unset, str] = UNSET
         if not isinstance(self.output_format, Unset):
             output_format = self.output_format.value
 
@@ -123,55 +122,55 @@ class VideoTrimRequest:
 
         end_sec = d.pop("end_sec")
 
-        def _parse_file_path(data: object) -> None | str | Unset:
+        def _parse_file_path(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         file_path = _parse_file_path(d.pop("file_path", UNSET))
 
-        def _parse_file_url(data: object) -> None | str | Unset:
+        def _parse_file_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         file_url = _parse_file_url(d.pop("file_url", UNSET))
 
-        def _parse_output_path(data: object) -> None | str | Unset:
+        def _parse_output_path(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_path = _parse_output_path(d.pop("output_path", UNSET))
 
-        def _parse_output_url(data: object) -> None | str | Unset:
+        def _parse_output_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         output_url = _parse_output_url(d.pop("output_url", UNSET))
 
         async_job = d.pop("async_job", UNSET)
 
-        def _parse_webhook_url(data: object) -> None | str | Unset:
+        def _parse_webhook_url(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         webhook_url = _parse_webhook_url(d.pop("webhook_url", UNSET))
 
         _output_format = d.pop("output_format", UNSET)
-        output_format: BaseVideoOutputRequestOutputFormat | Unset
+        output_format: Union[Unset, BaseVideoOutputRequestOutputFormat]
         if isinstance(_output_format, Unset):
             output_format = UNSET
         else:

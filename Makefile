@@ -213,7 +213,7 @@ generate-client-go: dev-image ## Regenerate the typed Go client from openapi.yam
 #     pip install "git+https://github.com/psyb0t/docker-flickies.git#subdirectory=pkg/clients/python/flickies-client"
 generate-client-python: dev-image ## Regenerate the typed Python client from openapi.yaml
 	$(DEV_RUN) sh -c "rm -rf pkg/clients/python/flickies-client/* && \
-		openapi-python-client generate --path openapi.yaml --output-path pkg/clients/python/flickies-client --overwrite"
+		openapi-python-client generate --meta poetry --path openapi.yaml --output-path pkg/clients/python/flickies-client --overwrite"
 
 # CI gate — fail loud when openapi.yaml was edited without re-running generators.
 generate-check: generate ## CI gate — fail if generated files drift from openapi.yaml
@@ -227,20 +227,22 @@ generate-check: generate ## CI gate — fail if generated files drift from opena
 
 DOCS_IMAGE := ghcr.io/actions/jekyll-build-pages:v1.0.13@sha256:6791ebfd912185ed59bfb5fb102664fa872496b79f87ff8b9cfba292a7345041
 
-docs: ## Build the GitHub Pages site from docs/ into .testing/docs-site
-	mkdir -p .testing/docs-site
-	docker run --rm \
-		--user $(UID):$(GID) \
-		-e HOME=/tmp \
-		-e GITHUB_WORKSPACE=/work \
-		-e GITHUB_REPOSITORY=psyb0t/docker-flickies \
-		-e INPUT_SOURCE=docs \
-		-e INPUT_DESTINATION=.testing/docs-site \
-		-e INPUT_VERBOSE=false \
-		-v $(PWD):/work \
-		$(DOCS_IMAGE)
+docs: docs-build ## Build the GitHub Pages site into website/build
+
+
 
 clean: ## Remove build / cache artifacts (host-side)
 	docker rmi $(CPU_IMAGE) $(CUDA_IMAGE) 2>/dev/null || true
 	rm -rf build dist *.egg-info .pytest_cache .mypy_cache .ruff_cache .venv
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+PAGES_NODE_IMAGE := node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+DOCS_RUN := docker run --rm --cap-drop ALL --security-opt no-new-privileges \
+	--user "$$(id -u):$$(id -g)" -e HOME=/tmp -e COREPACK_HOME=/work/website/.corepack \
+	-v "$(CURDIR):/work:ro" -v "$(CURDIR)/website:/work/website" -w /work/website
+OPENAPI_FILE ?= openapi.yaml
+
+.PHONY: docs-build
+docs-build: ## Build and check the documentation site
+	$(DOCS_RUN) $(PAGES_NODE_IMAGE) corepack pnpm install --frozen-lockfile --ignore-scripts --store-dir .pnpm-store
+	$(DOCS_RUN) --network none -e OPENAPI_FILE="$(OPENAPI_FILE)" $(PAGES_NODE_IMAGE) corepack pnpm run build

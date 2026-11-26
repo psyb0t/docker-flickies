@@ -69,6 +69,13 @@ def resolve_safe(root: Path, rel: str) -> Path:
     return resolved
 
 
+def resolve_existing(root: Path, rel: str) -> Path:
+    path = resolve_safe(root, rel)
+    if not path.is_file():
+        raise http_error(404, CODE_NOT_FOUND, "staged file not found")
+    return path
+
+
 async def save_stream(
     target: Path,
     chunks: AsyncIterator[bytes],

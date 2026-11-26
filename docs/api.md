@@ -8,7 +8,7 @@ nav_order: 5
 
 The REST API is the full surface of flickies. Every route is under `/v1/` on port 8000, takes and returns JSON (except file transfers), and is described in [openapi.yaml](https://github.com/psyb0t/docker-flickies/blob/main/openapi.yaml). The same operations are available as [MCP tools](mcp.md).
 
-The server does not validate request bodies against `openapi.yaml`. Each route reads the fields it needs; a missing required field such as `start_sec` on trim or `rows` on thumbnail grid ends in a plain-text `500 Internal Server Error` instead of a JSON error. Send `Content-Type: application/json` on every POST: without it the request also fails with that plain-text 500.
+The server does not validate request bodies against `openapi.yaml`. Editing and analysis endpoints validate their operation options explicitly and return 400 for invalid options. Older routes read the fields they need; a missing required field such as `start_sec` on trim or `rows` on thumbnail grid ends in a plain-text `500 Internal Server Error` instead of a JSON error. Send `Content-Type: application/json` on every POST: without it the request also fails with that plain-text 500.
 
 ## The contract
 
@@ -272,6 +272,26 @@ Takes `file_path` or `file_url` and returns ffprobe data for the first video and
   "size_bytes": 7521288
 }
 ```
+
+## Editing and analysis
+
+These endpoints use the standard video input, output and async job fields. Stage images and subtitle files with `PUT /v1/files/{path}`. Each operation runs on the CPU.
+
+| Endpoint | Options and output |
+| --- | --- |
+| `POST /v1/video/subtitles` | Provide `subtitle_path` (SRT or ASS) or `words` with `text`, `start_sec` and `end_sec` for karaoke. `mode` defaults to `burn`. `embed` writes a selectable MP4 track without ASS styling. Karaoke accepts `words_per_line` and `font_size`. |
+| `POST /v1/video/overlay` | Provide `image_path` (PNG, JPEG or WebP) or `text`. `start_sec` defaults to 0. `end_sec` is required and excluded. `x` and `y` specify the pixel offset from the top left. |
+| `POST /v1/video/crop` | Set even `width` and `height`. The default `crop` mode fills the canvas from the center. Set `x` and `y` together for an exact rectangle. Use `pad` to letterbox or `blur` for a blurred fill. |
+| `POST /v1/video/compose` | Pass a staged `second_path`. Set `layout` to `horizontal`, `vertical` or `pip`. Choose `audio` from `first`, `second` or `none`. The output ends with the shorter clip. Canvas dimensions must be multiples of eight. |
+| `POST /v1/video/scenes` | Detect scene cuts with FFmpeg. `threshold` defaults to 10 on a 0 to 100 scale. Smaller values detect more cuts. `artifacts: "none"` writes JSON with `start_sec`, `end_sec` and `score` per shot. Choose `frames` or `clips` for a ZIP with `scenes.json` and one JPEG or MP4 per shot. `max_scenes` defaults to 50 and caps at 200. |
+| `POST /v1/video/analyze` | Report black, frozen and silent intervals as JSON with `kind`, `start_sec` and `end_sec` per event. Use `black_min_sec`, `freeze_min_sec`, `silence_min_sec` and `silence_db` to tune detection. |
+| `POST /v1/video/frames` | Sample JPEGs at least `sample_interval_sec` apart (default 1). The ZIP includes `frames.json` mapping filenames to timestamps. `max_frames` defaults to 60 and caps at 120. |
+
+On `concat`, add one `transitions` entry per join. Each entry has an `effect` (`cut`, `fade`, `wipeleft`, `wiperight`, `slideleft`, `slideright` or `dissolve`) and `duration_sec`. Cuts use zero duration. Transition mode normalizes the clips and adds silence where a clip lacks audio. Clips overlap for the transition duration.
+
+On `transcode`, set `max_size_bytes` to request a size ceiling of at least 65536 bytes. This mode uses H.264 and AAC in MP4 and rejects a simultaneous CRF. It returns an error if the clip cannot fit.
+
+On `thumbnail_grid`, `timestamps: true` labels cells with timecodes and `layout: "review"` adds spacing. Either option samples across the full clip.
 
 ## Webhooks
 

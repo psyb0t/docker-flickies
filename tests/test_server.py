@@ -8,8 +8,13 @@ and the non-commercial gate refusal.
 
 from __future__ import annotations
 
+import io
+import json
 import shutil
 import subprocess
+import time
+import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -19,14 +24,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture
-def app_client(monkeypatch, tmp_path: Path) -> TestClient:
+def app_client(monkeypatch, tmp_path: Path) -> Iterator[TestClient]:
     monkeypatch.setenv("FLICKIES_ENGINES_FILE", str(REPO_ROOT / "engines.json"))
     monkeypatch.setenv("FLICKIES_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("FLICKIES_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("FLICKIES_ENABLE_NONCOMMERCIAL", raising=False)
     from flickies.server import build_app
 
-    return TestClient(build_app())
+    with TestClient(build_app()) as client:
+        yield client
 
 
 def test_healthz_open(app_client: TestClient) -> None:
@@ -226,3 +232,234 @@ def test_trim_with_real_ffmpeg(app_client: TestClient, tmp_path: Path) -> None:
     assert body["path"] == "out/trimmed.mp4"
     assert body["size"] > 0
     assert (tmp_path / "files" / "out" / "trimmed.mp4").is_file()
+
+
+@pytest.fixture
+def edit_inputs(app_client: TestClient, tmp_path: Path) -> None:
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg not installed")
+    fixtures = {
+        "cuts.mp4": [
+            "-f",
+            "lavfi",
+            "-i",
+            "color=black:s=160x96:r=20:d=1",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=white:s=160x96:r=20:d=1",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=48000:cl=mono",
+            "-filter_complex",
+            "[0:v][1:v]concat=n=2:v=1:a=0[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "2:a",
+            "-shortest",
+        ],
+        "other.mp4": ["-f", "lavfi", "-i", "testsrc2=s=128x72:r=25:d=2"],
+    }
+    for name, args in fixtures.items():
+        output = tmp_path / name
+        subprocess.run(
+            ["ffmpeg", "-v", "error", *args, "-c:v", "libx264", "-pix_fmt", "yuv420p", str(output)],
+            check=True,
+            capture_output=True,
+        )
+        assert app_client.put(f"/v1/files/{name}", content=output.read_bytes()).is_success
+    assert app_client.put(
+        "/v1/files/test.srt", content=b"1\n00:00:00,200 --> 00:00:01,000\nFlickies captions\n"
+    ).is_success
+
+
+@pytest.mark.parametrize(
+    ("operation", "options"),
+    [
+        ("subtitles", {"subtitle_path": "test.srt"}),
+        ("subtitles", {"subtitle_path": "test.srt", "mode": "embed"}),
+        (
+            "subtitles",
+            {
+                "words": [
+                    {"text": "One", "start_sec": 0.1, "end_sec": 0.5},
+                    {"text": "two", "start_sec": 0.6, "end_sec": 0.9},
+                ]
+            },
+        ),
+        ("crop", {"width": 80, "height": 80, "mode": "blur"}),
+        ("crop", {"width": 80, "height": 80, "x": 30, "y": 4}),
+        ("overlay", {"text": "100% video", "end_sec": 1}),
+        ("compose", {"second_path": "other.mp4", "width": 160, "height": 96}),
+        ("transcode", {"max_size_bytes": 65536}),
+    ],
+)
+def test_new_video_exports(
+    app_client: TestClient, edit_inputs: None, operation: str, options: dict
+) -> None:
+    _ = edit_inputs
+    response = app_client.post(
+        f"/v1/video/{operation}",
+        json={"file_path": "cuts.mp4", "output_path": "edited.mp4", **options},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["size"] > 0
+    if "max_size_bytes" in options:
+        assert response.json()["size"] <= options["max_size_bytes"]
+    if operation == "crop":
+        info = app_client.post("/v1/video/info", json={"file_path": "edited.mp4"}).json()
+        assert (info["width"], info["height"]) == (80, 80)
+
+
+@pytest.mark.parametrize("join", ["fade", "cut"])
+def test_concat_transition(app_client: TestClient, edit_inputs: None, join: str) -> None:
+    _ = edit_inputs
+    response = app_client.post(
+        "/v1/video/concat",
+        json={
+            "inputs_paths": ["cuts.mp4", "other.mp4", "cuts.mp4"],
+            "transitions": [
+                {"effect": join, "duration_sec": 0.25 if join == "fade" else 0},
+                {"effect": "wipeleft", "duration_sec": 0.25},
+            ],
+            "output_path": "joined.mp4",
+        },
+    )
+    assert response.status_code == 200, response.text
+    info = app_client.post("/v1/video/info", json={"file_path": "joined.mp4"}).json()
+    assert info["duration_sec"] == pytest.approx(5.5 if join == "fade" else 5.75, abs=0.11)
+    assert info["audio_codec"] == "aac"
+
+
+def test_analysis_outputs(app_client: TestClient, edit_inputs: None) -> None:
+    _ = edit_inputs
+    response = app_client.post(
+        "/v1/video/scenes",
+        json={"file_path": "cuts.mp4", "artifacts": "frames", "output_path": "shots.zip"},
+    )
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(app_client.get("/v1/files/shots.zip").content)) as archive:
+        shots = json.loads(archive.read("scenes.json"))["scenes"]
+        assert len(shots) == 2
+        assert shots[1]["start_sec"] == pytest.approx(1)
+        assert "scene-002.jpg" in archive.namelist()
+
+    response = app_client.post(
+        "/v1/video/analyze", json={"file_path": "cuts.mp4", "output_path": "report.json"}
+    )
+    assert response.status_code == 200, response.text
+    events = app_client.get("/v1/files/report.json").json()["events"]
+    assert {"black", "freeze", "silence"} == {event["kind"] for event in events}
+
+    response = app_client.post(
+        "/v1/video/frames",
+        json={
+            "file_path": "cuts.mp4",
+            "sample_interval_sec": 0.5,
+            "max_frames": 3,
+            "async_job": True,
+        },
+    )
+    assert response.status_code == 202, response.text
+    job_id = response.json()["job_id"]
+    for _ in range(100):
+        poll = app_client.get(f"/v1/jobs/{job_id}")
+        assert poll.status_code == 200, poll.text
+        job = poll.json()
+        if job["status"] in {"complete", "failed"}:
+            break
+        time.sleep(0.025)
+    assert job["status"] == "complete", job
+    with zipfile.ZipFile(
+        io.BytesIO(app_client.get("/v1/files/" + job["result"]["path"]).content)
+    ) as archive:
+        frames = json.loads(archive.read("frames.json"))["frames"]
+        assert [frame["time_sec"] for frame in frames] == pytest.approx([0, 0.5, 1])
+        assert all(archive.read(frame["file"]).startswith(b"\xff\xd8") for frame in frames)
+
+    response = app_client.post(
+        "/v1/video/thumbnail_grid",
+        json={
+            "file_path": "cuts.mp4",
+            "rows": 2,
+            "cols": 2,
+            "cell_width": 80,
+            "cell_height": 64,
+            "timestamps": True,
+            "layout": "review",
+            "output_path": "grid.png",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert app_client.get("/v1/files/grid.png").content.startswith(b"\x89PNG")
+
+
+@pytest.mark.parametrize(
+    ("operation", "options"),
+    [
+        ("overlay", {"text": "@file", "end_sec": 1}),
+        ("overlay", {"image_path": "../image.png", "end_sec": 1}),
+        ("subtitles", {"subtitle_path": "../secret.srt"}),
+        ("subtitles", {"words": [{"text": "hi", "start_sec": 2, "end_sec": 1}]}),
+        ("crop", {"width": 17, "height": 80}),
+        ("compose", {"second_path": "../secret.mp4"}),
+        ("scenes", {"max_scenes": 300}),
+        ("frames", {"sample_interval_sec": 0}),
+    ],
+)
+def test_edit_invalid_input(app_client: TestClient, operation: str, options: dict) -> None:
+    response = app_client.post(
+        f"/v1/video/{operation}",
+        json={"file_path": "test.mp4", "output_path": "out/file", **options},
+    )
+    assert response.status_code == 400, response.text
+
+
+def test_new_tools_over_mcp(app_client: TestClient, edit_inputs: None) -> None:
+    _ = edit_inputs
+    headers = {"Host": "localhost:8000", "Accept": "application/json, text/event-stream"}
+    tools = app_client.post(
+        "/v1/mcp",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list",
+        },
+    )
+    assert tools.status_code == 200, tools.text
+    assert len(tools.json()["result"]["tools"]) == 18
+    reply = app_client.post(
+        "/v1/mcp",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "frames",
+                "arguments": {
+                    "file_path": "cuts.mp4",
+                    "max_frames": 1,
+                    "output_path": "mcp.zip",
+                },
+            },
+        },
+    )
+    assert reply.status_code == 200, reply.text
+    assert reply.json()["result"]["structuredContent"]["path"] == "mcp.zip"
+
+
+def test_missing_overlay_asset(app_client: TestClient) -> None:
+    response = app_client.post(
+        "/v1/video/overlay",
+        json={
+            "file_path": "video.mp4",
+            "image_path": "missing.png",
+            "end_sec": 1,
+            "output_path": "out.mp4",
+        },
+    )
+    assert response.status_code == 404, response.text

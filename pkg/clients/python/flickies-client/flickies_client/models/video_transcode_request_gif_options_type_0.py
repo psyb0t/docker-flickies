@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -19,21 +17,21 @@ class VideoTranscodeRequestGifOptionsType0:
     """Only consulted when output_format=gif.
 
     Attributes:
-        width (int | None | Unset):
-        loop (int | Unset): 0 = infinite Default: 0.
-        palette_mode (VideoTranscodeRequestGifOptionsType0PaletteMode | Unset):  Default:
+        width (Union[None, Unset, int]):
+        loop (Union[Unset, int]): 0 = infinite Default: 0.
+        palette_mode (Union[Unset, VideoTranscodeRequestGifOptionsType0PaletteMode]):  Default:
             VideoTranscodeRequestGifOptionsType0PaletteMode.FULL.
     """
 
-    width: int | None | Unset = UNSET
-    loop: int | Unset = 0
-    palette_mode: VideoTranscodeRequestGifOptionsType0PaletteMode | Unset = (
+    width: Union[None, Unset, int] = UNSET
+    loop: Union[Unset, int] = 0
+    palette_mode: Union[Unset, VideoTranscodeRequestGifOptionsType0PaletteMode] = (
         VideoTranscodeRequestGifOptionsType0PaletteMode.FULL
     )
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        width: int | None | Unset
+        width: Union[None, Unset, int]
         if isinstance(self.width, Unset):
             width = UNSET
         else:
@@ -41,7 +39,7 @@ class VideoTranscodeRequestGifOptionsType0:
 
         loop = self.loop
 
-        palette_mode: str | Unset = UNSET
+        palette_mode: Union[Unset, str] = UNSET
         if not isinstance(self.palette_mode, Unset):
             palette_mode = self.palette_mode.value
 
@@ -61,19 +59,19 @@ class VideoTranscodeRequestGifOptionsType0:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
 
-        def _parse_width(data: object) -> int | None | Unset:
+        def _parse_width(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(Union[None, Unset, int], data)
 
         width = _parse_width(d.pop("width", UNSET))
 
         loop = d.pop("loop", UNSET)
 
         _palette_mode = d.pop("palette_mode", UNSET)
-        palette_mode: VideoTranscodeRequestGifOptionsType0PaletteMode | Unset
+        palette_mode: Union[Unset, VideoTranscodeRequestGifOptionsType0PaletteMode]
         if isinstance(_palette_mode, Unset):
             palette_mode = UNSET
         else:

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -15,26 +13,26 @@ T = TypeVar("T", bound="VideoInfoResponse")
 class VideoInfoResponse:
     """
     Attributes:
-        duration_sec (float | Unset):
-        width (int | Unset):
-        height (int | Unset):
-        fps (float | Unset):
-        video_codec (str | Unset):
-        audio_codec (None | str | Unset):
-        bitrate (int | None | Unset):
-        container_format (None | str | Unset):
-        size_bytes (int | Unset):
+        duration_sec (Union[Unset, float]):
+        width (Union[Unset, int]):
+        height (Union[Unset, int]):
+        fps (Union[Unset, float]):
+        video_codec (Union[Unset, str]):
+        audio_codec (Union[None, Unset, str]):
+        bitrate (Union[None, Unset, int]):
+        container_format (Union[None, Unset, str]):
+        size_bytes (Union[Unset, int]):
     """
 
-    duration_sec: float | Unset = UNSET
-    width: int | Unset = UNSET
-    height: int | Unset = UNSET
-    fps: float | Unset = UNSET
-    video_codec: str | Unset = UNSET
-    audio_codec: None | str | Unset = UNSET
-    bitrate: int | None | Unset = UNSET
-    container_format: None | str | Unset = UNSET
-    size_bytes: int | Unset = UNSET
+    duration_sec: Union[Unset, float] = UNSET
+    width: Union[Unset, int] = UNSET
+    height: Union[Unset, int] = UNSET
+    fps: Union[Unset, float] = UNSET
+    video_codec: Union[Unset, str] = UNSET
+    audio_codec: Union[None, Unset, str] = UNSET
+    bitrate: Union[None, Unset, int] = UNSET
+    container_format: Union[None, Unset, str] = UNSET
+    size_bytes: Union[Unset, int] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,19 +46,19 @@ class VideoInfoResponse:
 
         video_codec = self.video_codec
 
-        audio_codec: None | str | Unset
+        audio_codec: Union[None, Unset, str]
         if isinstance(self.audio_codec, Unset):
             audio_codec = UNSET
         else:
             audio_codec = self.audio_codec
 
-        bitrate: int | None | Unset
+        bitrate: Union[None, Unset, int]
         if isinstance(self.bitrate, Unset):
             bitrate = UNSET
         else:
             bitrate = self.bitrate
 
-        container_format: None | str | Unset
+        container_format: Union[None, Unset, str]
         if isinstance(self.container_format, Unset):
             container_format = UNSET
         else:
@@ -105,30 +103,30 @@ class VideoInfoResponse:
 
         video_codec = d.pop("video_codec", UNSET)
 
-        def _parse_audio_codec(data: object) -> None | str | Unset:
+        def _parse_audio_codec(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         audio_codec = _parse_audio_codec(d.pop("audio_codec", UNSET))
 
-        def _parse_bitrate(data: object) -> int | None | Unset:
+        def _parse_bitrate(data: object) -> Union[None, Unset, int]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(Union[None, Unset, int], data)
 
         bitrate = _parse_bitrate(d.pop("bitrate", UNSET))
 
-        def _parse_container_format(data: object) -> None | str | Unset:
+        def _parse_container_format(data: object) -> Union[None, Unset, str]:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(Union[None, Unset, str], data)
 
         container_format = _parse_container_format(d.pop("container_format", UNSET))
 
