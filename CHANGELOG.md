@@ -4,7 +4,7 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
-## [Unreleased]
+## [0.4.0], 2026-11-26
 
 - Migrated the documentation to Docusaurus with a generated OpenAPI reference and local search.
 - Restricted image builds to the default branch and releases to version tags. Tag runs reuse the scanned images and refresh release badges after the GitHub release.
@@ -12,6 +12,7 @@ out explicitly), patch bumps are docs / build / fixes only.
 - Added scene cuts, video quality reports and timestamped frame archives.
 - Added concat transitions, MP4 size targeting and timestamped review grids.
 - Added MCP tools and generated REST client methods for the new operations.
+- Added README navigation and sponsorship links.
 
 ## [0.3.18], 2026-11-09
 
