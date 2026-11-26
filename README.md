@@ -15,6 +15,18 @@ No account. No subscription. `docker run` and you're done.
 
 ---
 
+## Contents
+
+- [What's in the box](#whats-in-the-box)
+- [Quick start](#quick-start)
+- [Documentation](#documentation)
+- [License posture](#license-posture)
+- [Agent integrations](#agent-integrations)
+- [aigate integration](#aigate-integration)
+- [Development](#development)
+- [Sponsor](#sponsor)
+- [License](#license)
+
 ## What's in the box
 
 | | |
@@ -81,10 +93,16 @@ The [skill](https://github.com/psyb0t/docker-flickies/tree/main/.agents/skills/f
 
 [aigate](https://github.com/psyb0t/aigate) runs flickies at `/flickies/` (CPU, `FLICKIES=1`) and `/flickies-cuda/` (CUDA, `FLICKIES_CUDA=1`).
 
-## License
+## Development
 
-WTFPL for flickies itself. Bundled models and vendored code follow their upstream licenses ([THIRD_PARTY.md](https://github.com/psyb0t/docker-flickies/blob/main/THIRD_PARTY.md)), so review them before commercial redistribution.
+Run `make lint` and `make test` for code checks and `make docs-build` for the docs site. See the [development guide](https://psyb0t.github.io/docker-flickies/development/) for the generated clients and release pipeline.
 
 ## Sponsor
 
+[Sponsor on GitHub](https://github.com/sponsors/psyb0t)
+
 <a href="https://www.buymeacoffee.com/psyb0t"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me a Coffee" height="60" width="217"></a>
+
+## License
+
+WTFPL for flickies itself. Bundled models and vendored code follow their upstream licenses ([THIRD_PARTY.md](https://github.com/psyb0t/docker-flickies/blob/main/THIRD_PARTY.md)), so review them before commercial redistribution.
