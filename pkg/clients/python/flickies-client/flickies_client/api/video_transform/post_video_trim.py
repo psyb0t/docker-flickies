@@ -84,7 +84,11 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoTrimRequest,
 ) -> Response[Union[ErrorBody, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Trim a video clip
+
+     Keep the interval between the supplied offsets in seconds. Enable precise trimming to re-encode at
+    the requested frame boundaries.
+
     Args:
         body (VideoTrimRequest):
 
@@ -112,7 +116,11 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoTrimRequest,
 ) -> Optional[Union[ErrorBody, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Trim a video clip
+
+     Keep the interval between the supplied offsets in seconds. Enable precise trimming to re-encode at
+    the requested frame boundaries.
+
     Args:
         body (VideoTrimRequest):
 
@@ -135,7 +143,11 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoTrimRequest,
 ) -> Response[Union[ErrorBody, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Trim a video clip
+
+     Keep the interval between the supplied offsets in seconds. Enable precise trimming to re-encode at
+    the requested frame boundaries.
+
     Args:
         body (VideoTrimRequest):
 
@@ -161,7 +173,11 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoTrimRequest,
 ) -> Optional[Union[ErrorBody, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Trim a video clip
+
+     Keep the interval between the supplied offsets in seconds. Enable precise trimming to re-encode at
+    the requested frame boundaries.
+
     Args:
         body (VideoTrimRequest):
 

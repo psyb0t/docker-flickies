@@ -13,15 +13,15 @@ T = TypeVar("T", bound="VideoInfoResponse")
 class VideoInfoResponse:
     """
     Attributes:
-        duration_sec (Union[Unset, float]):
-        width (Union[Unset, int]):
-        height (Union[Unset, int]):
-        fps (Union[Unset, float]):
-        video_codec (Union[Unset, str]):
-        audio_codec (Union[None, Unset, str]):
-        bitrate (Union[None, Unset, int]):
-        container_format (Union[None, Unset, str]):
-        size_bytes (Union[Unset, int]):
+        duration_sec (Union[Unset, float]): Duration in seconds.
+        width (Union[Unset, int]): Width in pixels.
+        height (Union[Unset, int]): Height in pixels.
+        fps (Union[Unset, float]): Video frames per second.
+        video_codec (Union[Unset, str]): Video codec detected in the input.
+        audio_codec (Union[None, Unset, str]): Audio codec detected in the input, or null for a silent video.
+        bitrate (Union[None, Unset, int]): Overall stream bitrate in bits per second, when known.
+        container_format (Union[None, Unset, str]): Container names reported by the probe.
+        size_bytes (Union[Unset, int]): Input file size in bytes.
     """
 
     duration_sec: Union[Unset, float] = UNSET

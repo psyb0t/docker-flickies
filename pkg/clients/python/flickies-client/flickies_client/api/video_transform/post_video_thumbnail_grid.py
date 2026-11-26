@@ -85,7 +85,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoThumbnailGridRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Create a thumbnail grid
+
+     Arrange sampled frames in rows and columns. Supply timestamps to pick particular moments.
+
     Args:
         body (VideoThumbnailGridRequest):
 
@@ -113,7 +116,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoThumbnailGridRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Create a thumbnail grid
+
+     Arrange sampled frames in rows and columns. Supply timestamps to pick particular moments.
+
     Args:
         body (VideoThumbnailGridRequest):
 
@@ -136,7 +142,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoThumbnailGridRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Create a thumbnail grid
+
+     Arrange sampled frames in rows and columns. Supply timestamps to pick particular moments.
+
     Args:
         body (VideoThumbnailGridRequest):
 
@@ -162,7 +171,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoThumbnailGridRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Create a thumbnail grid
+
+     Arrange sampled frames in rows and columns. Supply timestamps to pick particular moments.
+
     Args:
         body (VideoThumbnailGridRequest):
 

@@ -14,18 +14,19 @@ T = TypeVar("T", bound="VideoThumbnailGridRequest")
 class VideoThumbnailGridRequest:
     """
     Attributes:
-        rows (int):
-        cols (int):
+        rows (int): Number of rows in the thumbnail grid.
+        cols (int): Number of columns in the thumbnail grid.
         file_path (Union[None, Unset, str]): Staged input path. Provide exactly one input.
         file_url (Union[None, Unset, str]): HTTP(S) input URL.
         output_path (Union[None, Unset, str]): Staged output path in synchronous mode.
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        timestamps (Union[Unset, bool]):  Default: False.
-        layout (Union[Unset, VideoThumbnailGridRequestLayout]):  Default: VideoThumbnailGridRequestLayout.TIGHT.
-        cell_width (Union[Unset, int]):  Default: 320.
-        cell_height (Union[Unset, int]):  Default: 180.
+        timestamps (Union[Unset, bool]): Source offsets in seconds for selected thumbnails. Default: False.
+        layout (Union[Unset, VideoThumbnailGridRequestLayout]): How thumbnails are arranged in the output image.
+            Default: VideoThumbnailGridRequestLayout.TIGHT.
+        cell_width (Union[Unset, int]): Width in pixels of each thumbnail in the grid. Default: 320.
+        cell_height (Union[Unset, int]): Height in pixels of each thumbnail in the grid. Default: 180.
     """
 
     rows: int

@@ -21,9 +21,11 @@ class VideoScenesRequest:
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        threshold (Union[Unset, float]):  Default: 10.0.
-        artifacts (Union[Unset, VideoScenesRequestArtifacts]):  Default: VideoScenesRequestArtifacts.NONE.
-        max_scenes (Union[Unset, int]):  Default: 50.
+        threshold (Union[Unset, float]): Minimum change score used to identify a scene cut. Higher values detect fewer
+            cuts. Default: 10.0.
+        artifacts (Union[Unset, VideoScenesRequestArtifacts]): Choose manifest only, preview frames, or trimmed scene
+            clips. Default: VideoScenesRequestArtifacts.NONE.
+        max_scenes (Union[Unset, int]): Maximum number of scenes to include. Default: 50.
     """
 
     file_path: Union[None, Unset, str] = UNSET

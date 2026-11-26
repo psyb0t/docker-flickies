@@ -58,7 +58,9 @@ def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[ErrorBody, File]]:
-    """Download a staged file.
+    """Download a staged file
+
+     Return the bytes at the given path. Use this to retrieve uploaded inputs or staged results.
 
     Args:
         path (str):
@@ -87,7 +89,9 @@ def sync(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[ErrorBody, File]]:
-    """Download a staged file.
+    """Download a staged file
+
+     Return the bytes at the given path. Use this to retrieve uploaded inputs or staged results.
 
     Args:
         path (str):
@@ -111,7 +115,9 @@ async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[ErrorBody, File]]:
-    """Download a staged file.
+    """Download a staged file
+
+     Return the bytes at the given path. Use this to retrieve uploaded inputs or staged results.
 
     Args:
         path (str):
@@ -138,7 +144,9 @@ async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[ErrorBody, File]]:
-    """Download a staged file.
+    """Download a staged file
+
+     Return the bytes at the given path. Use this to retrieve uploaded inputs or staged results.
 
     Args:
         path (str):

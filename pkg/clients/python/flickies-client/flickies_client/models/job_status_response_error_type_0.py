@@ -11,7 +11,8 @@ T = TypeVar("T", bound="JobStatusResponseErrorType0")
 
 @_attrs_define
 class JobStatusResponseErrorType0:
-    """
+    """Failure details when the job fails.
+
     Attributes:
         code (Union[Unset, str]):
         message (Union[Unset, str]):

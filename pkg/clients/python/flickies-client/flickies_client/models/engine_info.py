@@ -13,14 +13,14 @@ T = TypeVar("T", bound="EngineInfo")
 class EngineInfo:
     """
     Attributes:
-        slug (str):
-        executor (str):
-        loaded (bool):
-        noncommercial (bool):
-        variant (Union[None, Unset, str]):
-        cuda_only (Union[Unset, bool]):
-        vram_gb_min (Union[None, Unset, float]):
-        description (Union[Unset, str]):
+        slug (str): Engine ID to use in API requests.
+        executor (str): Backend implementation for this engine.
+        loaded (bool): Whether the engine is currently loaded into memory.
+        noncommercial (bool): Whether using the engine requires non-commercial opt-in.
+        variant (Union[None, Unset, str]): Model variant, when the backend provides one.
+        cuda_only (Union[Unset, bool]): Whether the engine requires an NVIDIA GPU.
+        vram_gb_min (Union[None, Unset, float]): Estimated minimum GPU memory in gigabytes.
+        description (Union[Unset, str]): Purpose of this configured engine.
         last_used_secs_ago (Union[None, Unset, float]): Seconds since this engine last served a request; null if never
             used.
     """

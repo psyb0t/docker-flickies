@@ -13,9 +13,9 @@ T = TypeVar("T", bound="UrlOutputResponse")
 class UrlOutputResponse:
     """
     Attributes:
-        url (str):
-        size (int):
-        sha256 (Union[None, Unset, str]):
+        url (str): Destination URL used to write the output.
+        size (int): Size of the output in bytes.
+        sha256 (Union[None, Unset, str]): SHA-256 checksum of the output bytes.
     """
 
     url: str

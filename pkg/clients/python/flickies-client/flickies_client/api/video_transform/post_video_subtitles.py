@@ -97,8 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoSubtitlesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word
-    timestamps.
+    """Add subtitles or karaoke captions
+
+     Supply a staged SRT or ASS file, or timed words for karaoke captions. Choose burn-in for visible
+    pixels or embed for a selectable subtitle track.
 
     Args:
         body (VideoSubtitlesRequest): Burn in an SRT or ASS file, embed a selectable track, or
@@ -128,8 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoSubtitlesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word
-    timestamps.
+    """Add subtitles or karaoke captions
+
+     Supply a staged SRT or ASS file, or timed words for karaoke captions. Choose burn-in for visible
+    pixels or embed for a selectable subtitle track.
 
     Args:
         body (VideoSubtitlesRequest): Burn in an SRT or ASS file, embed a selectable track, or
@@ -154,8 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoSubtitlesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word
-    timestamps.
+    """Add subtitles or karaoke captions
+
+     Supply a staged SRT or ASS file, or timed words for karaoke captions. Choose burn-in for visible
+    pixels or embed for a selectable subtitle track.
 
     Args:
         body (VideoSubtitlesRequest): Burn in an SRT or ASS file, embed a selectable track, or
@@ -183,8 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoSubtitlesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word
-    timestamps.
+    """Add subtitles or karaoke captions
+
+     Supply a staged SRT or ASS file, or timed words for karaoke captions. Choose burn-in for visible
+    pixels or embed for a selectable subtitle track.
 
     Args:
         body (VideoSubtitlesRequest): Burn in an SRT or ASS file, embed a selectable track, or

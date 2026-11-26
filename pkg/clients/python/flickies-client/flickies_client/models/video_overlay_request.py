@@ -14,7 +14,7 @@ class VideoOverlayRequest:
     """Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
 
     Attributes:
-        end_sec (float):
+        end_sec (float): End time in seconds from the start of the source.
         file_path (Union[None, Unset, str]): Staged input path. Provide exactly one input.
         file_url (Union[None, Unset, str]): HTTP(S) input URL.
         output_path (Union[None, Unset, str]): Staged output path in synchronous mode.
@@ -22,10 +22,10 @@ class VideoOverlayRequest:
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
         image_path (Union[None, Unset, str]): Staged image path. Supply exactly one of image_path and text.
-        text (Union[None, Unset, str]):
-        start_sec (Union[Unset, float]):  Default: 0.0.
-        x (Union[Unset, int]):  Default: 24.
-        y (Union[Unset, int]):  Default: 24.
+        text (Union[None, Unset, str]): Text to render into the video.
+        start_sec (Union[Unset, float]): Start time in seconds from the start of the source. Default: 0.0.
+        x (Union[Unset, int]): Horizontal pixel offset measured from the left edge. Default: 24.
+        y (Union[Unset, int]): Vertical pixel offset measured from the top edge. Default: 24.
     """
 
     end_sec: float

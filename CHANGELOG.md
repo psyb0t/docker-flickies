@@ -4,6 +4,11 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## [Unreleased]
+
+- Describe every REST operation and add concrete request examples for each video operation.
+- Make Pydantic model generation repeatable by removing the generation timestamp.
+
 ## [0.4.0], 2026-11-26
 
 - Migrated the documentation to Docusaurus with a generated OpenAPI reference and local search.

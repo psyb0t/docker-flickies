@@ -97,7 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoComposeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Combine two clips side by side, stacked or picture-in-picture.
+    """Compose a two-clip layout
+
+     Place a second staged clip beside, above or inside the first clip. Select which input supplies the
+    audio.
 
     Args:
         body (VideoComposeRequest): Combine two clips side by side, stacked or picture-in-picture.
@@ -126,7 +129,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoComposeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Combine two clips side by side, stacked or picture-in-picture.
+    """Compose a two-clip layout
+
+     Place a second staged clip beside, above or inside the first clip. Select which input supplies the
+    audio.
 
     Args:
         body (VideoComposeRequest): Combine two clips side by side, stacked or picture-in-picture.
@@ -150,7 +156,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoComposeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Combine two clips side by side, stacked or picture-in-picture.
+    """Compose a two-clip layout
+
+     Place a second staged clip beside, above or inside the first clip. Select which input supplies the
+    audio.
 
     Args:
         body (VideoComposeRequest): Combine two clips side by side, stacked or picture-in-picture.
@@ -177,7 +186,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoComposeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Combine two clips side by side, stacked or picture-in-picture.
+    """Compose a two-clip layout
+
+     Place a second staged clip beside, above or inside the first clip. Select which input supplies the
+    audio.
 
     Args:
         body (VideoComposeRequest): Combine two clips side by side, stacked or picture-in-picture.

@@ -14,16 +14,17 @@ T = TypeVar("T", bound="VideoTrimRequest")
 class VideoTrimRequest:
     """
     Attributes:
-        start_sec (float):
-        end_sec (float):
+        start_sec (float): Start time in seconds from the start of the source.
+        end_sec (float): End time in seconds from the start of the source.
         file_path (Union[None, Unset, str]): FILES_DIR-relative path of an already-uploaded video.
         file_url (Union[None, Unset, str]): HTTP(S) URL the server fetches.
-        output_path (Union[None, Unset, str]):
-        output_url (Union[None, Unset, str]):
-        async_job (Union[Unset, bool]):  Default: False.
+        output_path (Union[None, Unset, str]): Relative staging path where the server should write the result.
+        output_url (Union[None, Unset, str]): HTTP(S) URL that accepts a PUT of the result.
+        async_job (Union[Unset, bool]): Schedule work in the background and return a job ID. Use the job result's path
+            to retrieve the output. Default: False.
         webhook_url (Union[None, Unset, str]): Notify URL on async completion (HMAC-signed).
-        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]):  Default:
-            BaseVideoOutputRequestOutputFormat.MP4.
+        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]): Container format for the output video.
+            Default: BaseVideoOutputRequestOutputFormat.MP4.
         precise (Union[Unset, bool]): When false (default), trim uses `-c copy` for speed — fast, but
             ffmpeg can only cut on keyframe boundaries, so `start_sec` snaps
             to the nearest keyframe and may eat up to one GOP (~seconds) of

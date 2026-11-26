@@ -93,7 +93,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoRestoreRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Restore faces in video
+
+     Use GFPGAN to clean up the face region in a clip. This can also be run on the result of lip-sync.
+
     Args:
         body (VideoRestoreRequest):
 
@@ -121,7 +124,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoRestoreRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Restore faces in video
+
+     Use GFPGAN to clean up the face region in a clip. This can also be run on the result of lip-sync.
+
     Args:
         body (VideoRestoreRequest):
 
@@ -144,7 +150,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoRestoreRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Restore faces in video
+
+     Use GFPGAN to clean up the face region in a clip. This can also be run on the result of lip-sync.
+
     Args:
         body (VideoRestoreRequest):
 
@@ -170,7 +179,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoRestoreRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Restore faces in video
+
+     Use GFPGAN to clean up the face region in a clip. This can also be run on the result of lip-sync.
+
     Args:
         body (VideoRestoreRequest):
 

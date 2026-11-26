@@ -23,10 +23,12 @@ class VideoComposeRequest:
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        layout (Union[Unset, VideoComposeRequestLayout]):  Default: VideoComposeRequestLayout.HORIZONTAL.
-        width (Union[Unset, int]):  Default: 1280.
-        height (Union[Unset, int]):  Default: 720.
-        audio (Union[Unset, VideoComposeRequestAudio]):  Default: VideoComposeRequestAudio.FIRST.
+        layout (Union[Unset, VideoComposeRequestLayout]): Arrangement of the input clips. Default:
+            VideoComposeRequestLayout.HORIZONTAL.
+        width (Union[Unset, int]): Width in pixels. Default: 1280.
+        height (Union[Unset, int]): Height in pixels. Default: 720.
+        audio (Union[Unset, VideoComposeRequestAudio]): Choose the first clip's audio, the second clip's audio, or
+            silence. Default: VideoComposeRequestAudio.FIRST.
     """
 
     second_path: str

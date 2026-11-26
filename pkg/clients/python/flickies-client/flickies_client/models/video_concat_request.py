@@ -22,8 +22,8 @@ class VideoConcatRequest:
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        inputs_paths (Union[None, Unset, list[str]]):
-        inputs_urls (Union[None, Unset, list[str]]):
+        inputs_paths (Union[None, Unset, list[str]]): Relative staging paths for clips in playback order.
+        inputs_urls (Union[None, Unset, list[str]]): HTTP(S) URLs for clips in playback order.
         transitions (Union[None, Unset, list['VideoTransition']]): One transition per join. Omit for the original concat
             behavior.
         precise (Union[Unset, bool]): When false (default), concat uses the concat demuxer with

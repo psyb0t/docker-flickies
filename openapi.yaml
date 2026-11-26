@@ -178,13 +178,15 @@ components:
       type: object
       required: [status, version, device, available_engines, noncommercial_enabled]
       properties:
-        status: { type: string, examples: [ok] }
-        version: { type: string }
+        status: { type: string, examples: [ok], description: "Current state returned by the service." }
+        version: { type: string, description: "Flickies version running on the server." }
         device: { type: string, description: "auto / cpu / cuda" }
         available_engines:
+          description: "Engine slugs registered with the server."
           type: array
           items: { type: string }
         enabled_engines:
+          description: "Engine slugs enabled by this deployment."
           type: array
           items: { type: string }
         loaded_engine:
@@ -192,20 +194,21 @@ components:
           nullable: true
           description: Currently resident engine slug, or null if none loaded.
         noncommercial_enabled:
+          description: "Whether this deployment allows engines that require non-commercial opt-in."
           type: boolean
 
     EngineInfo:
       type: object
       required: [slug, executor, loaded, noncommercial]
       properties:
-        slug: { type: string }
-        executor: { type: string }
-        variant: { type: string, nullable: true }
-        loaded: { type: boolean }
-        noncommercial: { type: boolean }
-        cuda_only: { type: boolean }
-        vram_gb_min: { type: number, nullable: true }
-        description: { type: string }
+        slug: { type: string, description: "Engine ID to use in API requests." }
+        executor: { type: string, description: "Backend implementation for this engine." }
+        variant: { type: string, nullable: true, description: "Model variant, when the backend provides one." }
+        loaded: { type: boolean, description: "Whether the engine is currently loaded into memory." }
+        noncommercial: { type: boolean, description: "Whether using the engine requires non-commercial opt-in." }
+        cuda_only: { type: boolean, description: "Whether the engine requires an NVIDIA GPU." }
+        vram_gb_min: { type: number, nullable: true, description: "Estimated minimum GPU memory in gigabytes." }
+        description: { type: string, description: "Purpose of this configured engine." }
         last_used_secs_ago:
           type: number
           nullable: true
@@ -216,6 +219,7 @@ components:
       required: [engines]
       properties:
         engines:
+          description: "Registered engines and their current load state."
           type: array
           items: { $ref: "#/components/schemas/EngineInfo" }
 
@@ -224,22 +228,25 @@ components:
       type: object
       required: [job_id, status]
       properties:
-        job_id: { type: string, format: uuid }
-        status: { type: string, examples: [accepted] }
+        job_id: { type: string, format: uuid, description: "ID of an asynchronous job. Use it to poll for the result." }
+        status: { type: string, examples: [accepted], description: "Accepted indicates that the job has been queued." }
 
     JobStatusResponse:
       type: object
       required: [job_id, status]
       properties:
-        job_id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid, description: "ID of an asynchronous job. Use it to poll for the result." }
         status:
+          description: "Current job state. Poll again while the status is pending or running."
           type: string
           enum: [pending, running, complete, failed, cancelled]
         result:
+          description: "Output metadata once the job finishes successfully."
           type: object
           nullable: true
           additionalProperties: true
         error:
+          description: "Failure details when the job fails."
           type: object
           nullable: true
           properties:
@@ -250,20 +257,20 @@ components:
       type: object
       required: [path, size]
       properties:
-        path: { type: string }
-        size: { type: integer }
-        sha256: { type: string, nullable: true }
-        duration_sec: { type: number, nullable: true }
-        width: { type: integer, nullable: true }
-        height: { type: integer, nullable: true }
+        path: { type: string, description: "Relative staging path to the output file." }
+        size: { type: integer, description: "Size of the output in bytes." }
+        sha256: { type: string, nullable: true, description: "SHA-256 checksum of the output bytes." }
+        duration_sec: { type: number, nullable: true, description: "Duration in seconds." }
+        width: { type: integer, nullable: true, description: "Width in pixels." }
+        height: { type: integer, nullable: true, description: "Height in pixels." }
 
     UrlOutputResponse:
       type: object
       required: [url, size]
       properties:
-        url: { type: string, format: uri }
-        size: { type: integer }
-        sha256: { type: string, nullable: true }
+        url: { type: string, format: uri, description: "Destination URL used to write the output." }
+        size: { type: integer, description: "Size of the output in bytes." }
+        sha256: { type: string, nullable: true, description: "SHA-256 checksum of the output bytes." }
 
     # ── reusable input/output base ─────────────────────────────────────────
     BaseVideoInputRequest:
@@ -284,11 +291,12 @@ components:
       type: object
       description: Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
       properties:
-        output_path: { type: string, nullable: true }
-        output_url: { type: string, nullable: true, format: uri }
-        async_job: { type: boolean, default: false }
+        output_path: { type: string, nullable: true, description: "Relative staging path where the server should write the result." }
+        output_url: { type: string, nullable: true, format: uri, description: "HTTP(S) URL that accepts a PUT of the result." }
+        async_job: { type: boolean, default: false, description: "Schedule work in the background and return a job ID. Use the job result's path to retrieve the output." }
         webhook_url: { type: string, nullable: true, format: uri, description: "Notify URL on async completion (HMAC-signed)." }
         output_format:
+          description: "Container format for the output video."
           type: string
           enum: [mp4, webm, mov, mkv]
           default: mp4
@@ -307,6 +315,7 @@ components:
           nullable: true
           description: FILES_DIR-relative face video or still image.
         face_url:
+          description: "HTTP(S) URL of the face video or image. Omit when using face_path."
           type: string
           nullable: true
           format: uri
@@ -340,6 +349,7 @@ components:
       type: object
       properties:
         engine:
+          description: "Engine slug for the face restoration model."
           type: string
           enum: [gfpgan]
           default: gfpgan
@@ -352,8 +362,8 @@ components:
       type: object
       required: [start_sec, end_sec]
       properties:
-        start_sec: { type: number, minimum: 0 }
-        end_sec: { type: number, minimum: 0 }
+        start_sec: { type: number, minimum: 0, description: "Start time in seconds from the start of the source." }
+        end_sec: { type: number, minimum: 0, description: "End time in seconds from the start of the source." }
         precise:
           type: boolean
           default: false
@@ -374,11 +384,13 @@ components:
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
         inputs_paths:
+          description: "Relative staging paths for clips in playback order."
           type: array
           nullable: true
           items: { type: string }
           minItems: 2
         inputs_urls:
+          description: "HTTP(S) URLs for clips in playback order."
           type: array
           nullable: true
           items: { type: string, format: uri }
@@ -409,12 +421,12 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        output_format: {type: string, enum: [mp4, webm, mov, mkv, gif], default: mp4}
+        output_format: {type: string, enum: [mp4, webm, mov, mkv, gif], default: mp4, description: "Container format for the output video." }
         max_size_bytes: {type: integer, nullable: true, minimum: 65536, description: "MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with CRF."}
-        video_codec: { type: string, nullable: true, examples: [libx264, libx265, libvpx-vp9, libaom-av1] }
-        audio_codec: { type: string, nullable: true, examples: [aac, libopus, copy] }
-        crf: { type: integer, nullable: true, minimum: 0, maximum: 51 }
-        preset: { type: string, nullable: true, examples: [ultrafast, fast, medium, slow] }
+        video_codec: { type: string, nullable: true, examples: [libx264, libx265, libvpx-vp9, libaom-av1], description: "Video codec to write, when the chosen container supports it." }
+        audio_codec: { type: string, nullable: true, examples: [aac, libopus, copy], description: "Audio codec to write, when the chosen container supports it." }
+        crf: { type: integer, nullable: true, minimum: 0, maximum: 51, description: "Constant rate factor controlling quality. With compatible codecs, lower values preserve more detail." }
+        preset: { type: string, nullable: true, examples: [ultrafast, fast, medium, slow], description: "Encoding speed preset for a compatible encoder." }
         fps: { type: number, nullable: true, minimum: 1, maximum: 240, description: "Re-encode at this frame rate. Applies to all output formats." }
         gif_options:
           type: object
@@ -435,8 +447,8 @@ components:
       type: object
       required: [width, height]
       properties:
-        width: { type: integer, minimum: 16 }
-        height: { type: integer, minimum: 16 }
+        width: { type: integer, minimum: 16, description: "Width in pixels." }
+        height: { type: integer, minimum: 16, description: "Height in pixels." }
         keep_aspect:
           type: boolean
           default: true
@@ -448,9 +460,10 @@ components:
       type: object
       required: [video_path_or_url, audio_path_or_url]
       properties:
-        video_path_or_url: { type: string }
-        audio_path_or_url: { type: string }
+        video_path_or_url: { type: string, description: "Staged path or HTTP(S) URL of the video clip." }
+        audio_path_or_url: { type: string, description: "Staged path or HTTP(S) URL of the audio track." }
         replace_existing_audio:
+          description: "Replace the input video's existing audio instead of keeping it."
           type: boolean
           default: true
 
@@ -460,11 +473,12 @@ components:
       type: object
       properties:
         audio_format:
+          description: "Encoding for the extracted audio file."
           type: string
           enum: [wav, mp3, m4a, ogg, flac]
           default: wav
-        output_path: { type: string, nullable: true }
-        output_url: { type: string, nullable: true, format: uri }
+        output_path: { type: string, nullable: true, description: "Relative staging path where the server should write the result." }
+        output_url: { type: string, nullable: true, format: uri, description: "HTTP(S) URL that accepts a PUT of the result." }
 
     VideoThumbnailGridRequest:
       type: object
@@ -476,27 +490,27 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        timestamps: {type: boolean, default: false}
-        layout: {type: string, enum: [tight, review], default: tight}
-        rows: { type: integer, minimum: 1, maximum: 16 }
-        cols: { type: integer, minimum: 1, maximum: 16 }
-        cell_width: { type: integer, default: 320 }
-        cell_height: { type: integer, default: 180 }
+        timestamps: {type: boolean, default: false, description: "Source offsets in seconds for selected thumbnails." }
+        layout: {type: string, enum: [tight, review], default: tight, description: "How thumbnails are arranged in the output image." }
+        rows: { type: integer, minimum: 1, maximum: 16, description: "Number of rows in the thumbnail grid." }
+        cols: { type: integer, minimum: 1, maximum: 16, description: "Number of columns in the thumbnail grid." }
+        cell_width: { type: integer, default: 320, description: "Width in pixels of each thumbnail in the grid." }
+        cell_height: { type: integer, default: 180, description: "Height in pixels of each thumbnail in the grid." }
 
     TimedWord:
       type: object
       required: [text, start_sec, end_sec]
       properties:
-        text: {type: string, minLength: 1, maxLength: 128}
-        start_sec: {type: number, minimum: 0, maximum: 86400}
-        end_sec: {type: number, minimum: 0, maximum: 86400}
+        text: {type: string, minLength: 1, maxLength: 128, description: "Word or token spoken during this time interval." }
+        start_sec: {type: number, minimum: 0, maximum: 86400, description: "Start time in seconds from the start of the source." }
+        end_sec: {type: number, minimum: 0, maximum: 86400, description: "End time in seconds from the start of the source." }
 
     VideoTransition:
       type: object
       required: [effect, duration_sec]
       properties:
-        effect: {type: string, enum: [cut, fade, wipeleft, wiperight, slideleft, slideright, dissolve]}
-        duration_sec: {type: number, minimum: 0, maximum: 10}
+        effect: {type: string, enum: [cut, fade, wipeleft, wiperight, slideleft, slideright, dissolve], description: "Transition used between adjacent input clips." }
+        duration_sec: {type: number, minimum: 0, maximum: 10, description: "Duration in seconds." }
 
     VideoSubtitlesRequest:
       type: object
@@ -509,10 +523,10 @@ components:
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
         subtitle_path: {type: string, nullable: true, description: "Staged SRT or ASS path. Supply exactly one of subtitle_path and words."}
-        words: {type: array, nullable: true, minItems: 1, maxItems: 12000, items: {$ref: "#/components/schemas/TimedWord"}}
-        mode: {type: string, enum: [burn, embed], default: burn}
-        words_per_line: {type: integer, minimum: 1, maximum: 12, default: 4}
-        font_size: {type: integer, minimum: 12, maximum: 140, default: 56}
+        words: {type: array, nullable: true, minItems: 1, maxItems: 12000, items: {$ref: "#/components/schemas/TimedWord"}, description: "Words and timestamps used to generate karaoke captions." }
+        mode: {type: string, enum: [burn, embed], default: burn, description: "Burn captions into the image or embed them as a selectable subtitle track." }
+        words_per_line: {type: integer, minimum: 1, maximum: 12, default: 4, description: "Maximum number of words grouped into each karaoke line." }
+        font_size: {type: integer, minimum: 12, maximum: 140, default: 56, description: "Font size for generated karaoke captions." }
 
     VideoOverlayRequest:
       type: object
@@ -526,11 +540,11 @@ components:
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
         image_path: {type: string, nullable: true, description: "Staged image path. Supply exactly one of image_path and text."}
-        text: {type: string, nullable: true, maxLength: 160}
-        start_sec: {type: number, minimum: 0, maximum: 86400, default: 0}
-        end_sec: {type: number, minimum: 0, maximum: 86400}
-        x: {type: integer, minimum: 0, maximum: 16384, default: 24}
-        y: {type: integer, minimum: 0, maximum: 16384, default: 24}
+        text: {type: string, nullable: true, maxLength: 160, description: "Text to render into the video." }
+        start_sec: {type: number, minimum: 0, maximum: 86400, default: 0, description: "Start time in seconds from the start of the source." }
+        end_sec: {type: number, minimum: 0, maximum: 86400, description: "End time in seconds from the start of the source." }
+        x: {type: integer, minimum: 0, maximum: 16384, default: 24, description: "Horizontal pixel offset measured from the left edge." }
+        y: {type: integer, minimum: 0, maximum: 16384, default: 24, description: "Vertical pixel offset measured from the top edge." }
 
     VideoCropRequest:
       type: object
@@ -543,11 +557,11 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2}
-        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2}
-        mode: {type: string, enum: [crop, pad, blur], default: crop}
-        x: {type: integer, nullable: true, minimum: 0, maximum: 16384}
-        y: {type: integer, nullable: true, minimum: 0, maximum: 16384}
+        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2, description: "Width in pixels." }
+        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 2, description: "Height in pixels." }
+        mode: {type: string, enum: [crop, pad, blur], default: crop, description: "Crop to fill, pad with letterboxing, or fill unused space with a blurred background." }
+        x: {type: integer, nullable: true, minimum: 0, maximum: 16384, description: "Left edge of an explicit crop, in pixels." }
+        y: {type: integer, nullable: true, minimum: 0, maximum: 16384, description: "Top edge of an explicit crop, in pixels." }
 
     VideoComposeRequest:
       type: object
@@ -561,10 +575,10 @@ components:
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
         second_path: {type: string, description: "Staged path of the second video."}
-        layout: {type: string, enum: [horizontal, vertical, pip], default: horizontal}
-        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 1280}
-        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 720}
-        audio: {type: string, enum: [first, second, none], default: first}
+        layout: {type: string, enum: [horizontal, vertical, pip], default: horizontal, description: "Arrangement of the input clips." }
+        width: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 1280, description: "Width in pixels." }
+        height: {type: integer, minimum: 16, maximum: 4096, multipleOf: 8, default: 720, description: "Height in pixels." }
+        audio: {type: string, enum: [first, second, none], default: first, description: "Choose the first clip's audio, the second clip's audio, or silence." }
 
     VideoScenesRequest:
       type: object
@@ -576,9 +590,9 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        threshold: {type: number, minimum: 0, exclusiveMinimum: true, maximum: 100, default: 10}
-        artifacts: {type: string, enum: [none, frames, clips], default: none}
-        max_scenes: {type: integer, minimum: 1, maximum: 200, default: 50}
+        threshold: {type: number, minimum: 0, exclusiveMinimum: true, maximum: 100, default: 10, description: "Minimum change score used to identify a scene cut. Higher values detect fewer cuts." }
+        artifacts: {type: string, enum: [none, frames, clips], default: none, description: "Choose manifest only, preview frames, or trimmed scene clips." }
+        max_scenes: {type: integer, minimum: 1, maximum: 200, default: 50, description: "Maximum number of scenes to include." }
 
     VideoAnalyzeRequest:
       type: object
@@ -590,10 +604,10 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        black_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.25}
-        freeze_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5}
-        silence_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5}
-        silence_db: {type: number, minimum: -90, maximum: -5, default: -40}
+        black_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.25, description: "Shortest black interval to report, in seconds." }
+        freeze_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5, description: "Shortest frozen interval to report, in seconds." }
+        silence_min_sec: {type: number, minimum: 0.05, maximum: 60, default: 0.5, description: "Shortest quiet interval to report, in seconds." }
+        silence_db: {type: number, minimum: -90, maximum: -5, default: -40, description: "Audio level in decibels below which a signal is considered silent." }
 
     VideoFramesRequest:
       type: object
@@ -605,8 +619,8 @@ components:
         output_url: {type: string, format: uri, nullable: true, description: "Presigned PUT URL in synchronous mode."}
         async_job: {type: boolean, default: false, description: "Schedule the job and stage the result under jobs/."}
         webhook_url: {type: string, format: uri, nullable: true, description: "Callback URL for asynchronous completion."}
-        sample_interval_sec: {type: number, minimum: 0.1, maximum: 60, default: 1}
-        max_frames: {type: integer, minimum: 1, maximum: 120, default: 60}
+        sample_interval_sec: {type: number, minimum: 0.1, maximum: 60, default: 1, description: "Time between sampled frames, in seconds." }
+        max_frames: {type: integer, minimum: 1, maximum: 120, default: 60, description: "Maximum number of frames to sample." }
 
     VideoInfoRequest:
       allOf:
@@ -616,22 +630,23 @@ components:
     VideoInfoResponse:
       type: object
       properties:
-        duration_sec: { type: number }
-        width: { type: integer }
-        height: { type: integer }
-        fps: { type: number }
-        video_codec: { type: string }
-        audio_codec: { type: string, nullable: true }
-        bitrate: { type: integer, nullable: true }
-        container_format: { type: string, nullable: true }
-        size_bytes: { type: integer }
+        duration_sec: { type: number, description: "Duration in seconds." }
+        width: { type: integer, description: "Width in pixels." }
+        height: { type: integer, description: "Height in pixels." }
+        fps: { type: number, description: "Video frames per second." }
+        video_codec: { type: string, description: "Video codec detected in the input." }
+        audio_codec: { type: string, nullable: true, description: "Audio codec detected in the input, or null for a silent video." }
+        bitrate: { type: integer, nullable: true, description: "Overall stream bitrate in bits per second, when known." }
+        container_format: { type: string, nullable: true, description: "Container names reported by the probe." }
+        size_bytes: { type: integer, description: "Input file size in bytes." }
 
 paths:
   /v1/health:
     get:
       tags: [Health]
+      summary: "Check service health"
       operationId: getHealth
-      summary: Liveness + discovery
+      description: "Check whether the service is responding and see which device and engines are available. This versioned route requires a bearer token when authentication is enabled."
       responses:
         "200":
           description: Server status.
@@ -642,8 +657,9 @@ paths:
   /v1/engines:
     get:
       tags: [Engines]
+      summary: "List video engines"
       operationId: listEngines
-      summary: List registered engines + load state.
+      description: "See which inference engines are registered, which are loaded and what hardware or license settings each needs."
       responses:
         "200":
           description: Engine list.
@@ -655,8 +671,9 @@ paths:
   /v1/engines/{slug}:
     delete:
       tags: [Engines]
+      summary: "Unload a video engine"
       operationId: evictEngine
-      summary: Evict the engine from VRAM (no-op if not loaded).
+      description: "Release the selected inference engine from memory. The next request that needs it can load it again."
       parameters:
         - $ref: "#/components/parameters/EngineSlug"
       responses:
@@ -668,8 +685,9 @@ paths:
   /v1/files/{path}:
     put:
       tags: [Files]
+      summary: "Upload a staged file"
       operationId: putFile
-      summary: Upload a video/audio file to the local staging area.
+      description: "Send the file as raw bytes and put its relative staging path in the URL. Use that path in later video requests."
       parameters:
         - $ref: "#/components/parameters/FilesPath"
       requestBody:
@@ -687,8 +705,9 @@ paths:
         "413": { $ref: "#/components/responses/413" }
     get:
       tags: [Files]
+      summary: "Download a staged file"
       operationId: getFile
-      summary: Download a staged file.
+      description: "Return the bytes at the given path. Use this to retrieve uploaded inputs or staged results."
       parameters:
         - $ref: "#/components/parameters/FilesPath"
       responses:
@@ -701,7 +720,9 @@ paths:
         "404": { $ref: "#/components/responses/404" }
     delete:
       tags: [Files]
+      summary: "Delete a staged file"
       operationId: deleteFile
+      description: "Remove the file at the specified staging path."
       parameters:
         - $ref: "#/components/parameters/FilesPath"
       responses:
@@ -713,7 +734,9 @@ paths:
   /v1/jobs/{job_id}:
     get:
       tags: [Jobs]
+      summary: "Get a background job"
       operationId: getJob
+      description: "Poll the job ID from a 202 response. On success, the result provides the staged output path to download."
       parameters:
         - $ref: "#/components/parameters/JobIdPath"
       responses:
@@ -728,13 +751,19 @@ paths:
   /v1/video/lipsync:
     post:
       tags: [Lipsync]
+      summary: "Lip-sync a face"
       operationId: postVideoLipsync
-      summary: Drive a face from an audio track.
+      description: "Animate the face in a source video or still image using a separate audio track. Use an engine that supports the source type and the deployment's hardware."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoLipsyncRequest" }
+            example:
+              face_path: "uploads/face.mp4"
+              audio_path: "uploads/voice.wav"
+              engine: "latentsync-1.5"
+              output_path: "out/lipsync.mp4"
       responses:
         "200":
           description: Sync result.
@@ -757,12 +786,17 @@ paths:
   /v1/video/restore:
     post:
       tags: [Restore]
+      summary: "Restore faces in video"
       operationId: postVideoRestore
+      description: "Use GFPGAN to clean up the face region in a clip. This can also be run on the result of lip-sync."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoRestoreRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              output_path: "out/restored.mp4"
       responses:
         "200":
           description: Sync result.
@@ -784,12 +818,20 @@ paths:
   /v1/video/trim:
     post:
       tags: [Video Transform]
+      summary: "Trim a video clip"
       operationId: postVideoTrim
+      description: "Keep the interval between the supplied offsets in seconds. Enable precise trimming to re-encode at the requested frame boundaries."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoTrimRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              start_sec: 1
+              end_sec: 4
+              precise: true
+              output_path: "out/trimmed.mp4"
       responses:
         "200":
           description: Trimmed.
@@ -805,12 +847,17 @@ paths:
   /v1/video/concat:
     post:
       tags: [Video Transform]
+      summary: "Concatenate video clips"
       operationId: postVideoConcat
+      description: "Join two or more clips in the supplied order. You can add transitions between clips."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoConcatRequest" }
+            example:
+              inputs_paths: ["uploads/first.mp4", "uploads/second.mp4"]
+              output_path: "out/joined.mp4"
       responses:
         "200":
           description: Concatenated.
@@ -830,12 +877,18 @@ paths:
   /v1/video/transcode:
     post:
       tags: [Video Transform]
+      summary: "Transcode a video"
       operationId: postVideoTranscode
+      description: "Re-encode into another container or codec, change the frame rate, or produce an animated GIF."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoTranscodeRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              output_format: "webm"
+              output_path: "out/clip.webm"
       responses:
         "200":
           description: Transcoded.
@@ -855,12 +908,19 @@ paths:
   /v1/video/scale:
     post:
       tags: [Video Transform]
+      summary: "Resize a video"
       operationId: postVideoScale
+      description: "Set the output width and height in pixels. Use the aspect-ratio option to avoid stretching the image."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoScaleRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              width: 1280
+              height: 720
+              output_path: "out/scaled.mp4"
       responses:
         "200":
           description: Scaled.
@@ -874,12 +934,19 @@ paths:
   /v1/video/mux_audio:
     post:
       tags: [Video Transform]
+      summary: "Add audio to a video"
       operationId: postVideoMuxAudio
+      description: "Combine a video and an audio track. Set the replacement option to discard an existing audio track."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoMuxAudioRequest" }
+            example:
+              video_path_or_url: "uploads/clip.mp4"
+              audio_path_or_url: "uploads/voice.wav"
+              replace_existing_audio: true
+              output_path: "out/with-voice.mp4"
       responses:
         "200":
           description: Muxed.
@@ -893,12 +960,18 @@ paths:
   /v1/video/extract_audio:
     post:
       tags: [Video Transform]
+      summary: "Extract audio from a video"
       operationId: postVideoExtractAudio
+      description: "Save the clip's audio track as a separate file in the selected audio format."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoExtractAudioRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              audio_format: "wav"
+              output_path: "out/clip.wav"
       responses:
         "200":
           description: Audio extracted.
@@ -912,12 +985,19 @@ paths:
   /v1/video/thumbnail_grid:
     post:
       tags: [Video Transform]
+      summary: "Create a thumbnail grid"
       operationId: postVideoThumbnailGrid
+      description: "Arrange sampled frames in rows and columns. Supply timestamps to pick particular moments."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoThumbnailGridRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              rows: 2
+              cols: 3
+              output_path: "out/grid.png"
       responses:
         "200":
           description: PNG grid produced.
@@ -937,13 +1017,19 @@ paths:
   /v1/video/subtitles:
     post:
       tags: [Video Transform]
+      summary: "Add subtitles or karaoke captions"
       operationId: postVideoSubtitles
-      summary: "Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word timestamps."
+      description: "Supply a staged SRT or ASS file, or timed words for karaoke captions. Choose burn-in for visible pixels or embed for a selectable subtitle track."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoSubtitlesRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              subtitle_path: "uploads/captions.srt"
+              mode: "burn"
+              output_path: "out/captioned.mp4"
       responses:
         "200":
           description: Output written.
@@ -966,13 +1052,20 @@ paths:
   /v1/video/overlay:
     post:
       tags: [Video Transform]
+      summary: "Overlay an image or text"
       operationId: postVideoOverlay
-      summary: "Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval."
+      description: "Place a staged image or a text label at the requested pixel coordinates during a time interval."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoOverlayRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              text: "Preview"
+              start_sec: 0
+              end_sec: 3
+              output_path: "out/labeled.mp4"
       responses:
         "200":
           description: Output written.
@@ -995,13 +1088,20 @@ paths:
   /v1/video/crop:
     post:
       tags: [Video Transform]
+      summary: "Crop a video or fit a canvas"
       operationId: postVideoCrop
-      summary: "Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background."
+      description: "Choose a target size in pixels. Crop the source, add letterboxing, or fill the unused canvas with a blurred background."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoCropRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              width: 1080
+              height: 1920
+              mode: "blur"
+              output_path: "out/vertical.mp4"
       responses:
         "200":
           description: Output written.
@@ -1024,13 +1124,20 @@ paths:
   /v1/video/compose:
     post:
       tags: [Video Transform]
+      summary: "Compose a two-clip layout"
       operationId: postVideoCompose
-      summary: "Combine two clips side by side, stacked or picture-in-picture."
+      description: "Place a second staged clip beside, above or inside the first clip. Select which input supplies the audio."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoComposeRequest" }
+            example:
+              file_path: "uploads/first.mp4"
+              second_path: "uploads/second.mp4"
+              layout: "horizontal"
+              audio: "first"
+              output_path: "out/side-by-side.mp4"
       responses:
         "200":
           description: Output written.
@@ -1053,13 +1160,18 @@ paths:
   /v1/video/scenes:
     post:
       tags: [Video Transform]
+      summary: "Detect scene cuts"
       operationId: postVideoScenes
-      summary: "Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed clips."
+      description: "Write a JSON manifest of detected scenes. Request preview frames or trimmed clips to package the manifest and artifacts together in a ZIP."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoScenesRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              artifacts: "frames"
+              output_path: "out/scenes.zip"
       responses:
         "200":
           description: Output written.
@@ -1082,13 +1194,17 @@ paths:
   /v1/video/analyze:
     post:
       tags: [Video Transform]
+      summary: "Detect black, frozen or silent intervals"
       operationId: postVideoAnalyze
-      summary: "Report black frames, frozen video and silent intervals in a JSON file."
+      description: "Scan a clip for black frames, frozen video and quiet audio. Set the minimum durations and silence threshold to control which intervals are reported."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoAnalyzeRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              output_path: "out/analysis.json"
       responses:
         "200":
           description: Output written.
@@ -1111,13 +1227,19 @@ paths:
   /v1/video/frames:
     post:
       tags: [Video Transform]
+      summary: "Extract sampled video frames"
       operationId: postVideoFrames
-      summary: "Extract timestamped JPEG samples into a ZIP with a frames.json manifest."
+      description: "Sample frames at the requested time interval. The ZIP contains JPEG files and a manifest with their timestamps."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoFramesRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
+              sample_interval_sec: 2
+              max_frames: 20
+              output_path: "out/frames.zip"
       responses:
         "200":
           description: Output written.
@@ -1140,13 +1262,16 @@ paths:
   /v1/video/info:
     post:
       tags: [Info]
+      summary: "Read video metadata"
       operationId: postVideoInfo
-      summary: All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+      description: "Probe the source for duration, dimensions, frame rate, codecs and bitrate without producing a new video."
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/VideoInfoRequest" }
+            example:
+              file_path: "uploads/clip.mp4"
       responses:
         "200":
           description: ffprobe metadata.

@@ -68,7 +68,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: File,
 ) -> Response[Union[ErrorBody, StagedOutputResponse]]:
-    """Upload a video/audio file to the local staging area.
+    """Upload a staged file
+
+     Send the file as raw bytes and put its relative staging path in the URL. Use that path in later
+    video requests.
 
     Args:
         path (str):
@@ -100,7 +103,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: File,
 ) -> Optional[Union[ErrorBody, StagedOutputResponse]]:
-    """Upload a video/audio file to the local staging area.
+    """Upload a staged file
+
+     Send the file as raw bytes and put its relative staging path in the URL. Use that path in later
+    video requests.
 
     Args:
         path (str):
@@ -127,7 +133,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: File,
 ) -> Response[Union[ErrorBody, StagedOutputResponse]]:
-    """Upload a video/audio file to the local staging area.
+    """Upload a staged file
+
+     Send the file as raw bytes and put its relative staging path in the URL. Use that path in later
+    video requests.
 
     Args:
         path (str):
@@ -157,7 +166,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: File,
 ) -> Optional[Union[ErrorBody, StagedOutputResponse]]:
-    """Upload a video/audio file to the local staging area.
+    """Upload a staged file
+
+     Send the file as raw bytes and put its relative staging path in the URL. Use that path in later
+    video requests.
 
     Args:
         path (str):

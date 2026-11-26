@@ -20,10 +20,11 @@ class VideoAnalyzeRequest:
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        black_min_sec (Union[Unset, float]):  Default: 0.25.
-        freeze_min_sec (Union[Unset, float]):  Default: 0.5.
-        silence_min_sec (Union[Unset, float]):  Default: 0.5.
-        silence_db (Union[Unset, float]):  Default: -40.0.
+        black_min_sec (Union[Unset, float]): Shortest black interval to report, in seconds. Default: 0.25.
+        freeze_min_sec (Union[Unset, float]): Shortest frozen interval to report, in seconds. Default: 0.5.
+        silence_min_sec (Union[Unset, float]): Shortest quiet interval to report, in seconds. Default: 0.5.
+        silence_db (Union[Unset, float]): Audio level in decibels below which a signal is considered silent. Default:
+            -40.0.
     """
 
     file_path: Union[None, Unset, str] = UNSET

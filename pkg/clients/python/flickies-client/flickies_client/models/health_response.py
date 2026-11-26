@@ -13,12 +13,12 @@ T = TypeVar("T", bound="HealthResponse")
 class HealthResponse:
     """
     Attributes:
-        status (str):
-        version (str):
+        status (str): Current state returned by the service.
+        version (str): Flickies version running on the server.
         device (str): auto / cpu / cuda
-        available_engines (list[str]):
-        noncommercial_enabled (bool):
-        enabled_engines (Union[Unset, list[str]]):
+        available_engines (list[str]): Engine slugs registered with the server.
+        noncommercial_enabled (bool): Whether this deployment allows engines that require non-commercial opt-in.
+        enabled_engines (Union[Unset, list[str]]): Engine slugs enabled by this deployment.
         loaded_engine (Union[None, Unset, str]): Currently resident engine slug, or null if none loaded.
     """
 

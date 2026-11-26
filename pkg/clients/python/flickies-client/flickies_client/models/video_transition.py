@@ -13,8 +13,8 @@ T = TypeVar("T", bound="VideoTransition")
 class VideoTransition:
     """
     Attributes:
-        effect (VideoTransitionEffect):
-        duration_sec (float):
+        effect (VideoTransitionEffect): Transition used between adjacent input clips.
+        duration_sec (float): Duration in seconds.
     """
 
     effect: VideoTransitionEffect

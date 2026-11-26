@@ -97,7 +97,9 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoOverlayRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
+    """Overlay an image or text
+
+     Place a staged image or a text label at the requested pixel coordinates during a time interval.
 
     Args:
         body (VideoOverlayRequest): Draw a staged image (PNG, JPEG or WebP) or a text label during
@@ -127,7 +129,9 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoOverlayRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
+    """Overlay an image or text
+
+     Place a staged image or a text label at the requested pixel coordinates during a time interval.
 
     Args:
         body (VideoOverlayRequest): Draw a staged image (PNG, JPEG or WebP) or a text label during
@@ -152,7 +156,9 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoOverlayRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
+    """Overlay an image or text
+
+     Place a staged image or a text label at the requested pixel coordinates during a time interval.
 
     Args:
         body (VideoOverlayRequest): Draw a staged image (PNG, JPEG or WebP) or a text label during
@@ -180,7 +186,9 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoOverlayRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
+    """Overlay an image or text
+
+     Place a staged image or a text label at the requested pixel coordinates during a time interval.
 
     Args:
         body (VideoOverlayRequest): Draw a staged image (PNG, JPEG or WebP) or a text label during

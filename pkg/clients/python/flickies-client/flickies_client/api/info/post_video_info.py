@@ -67,7 +67,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Response[Union[ErrorBody, VideoInfoResponse]]:
-    """All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+    """Read video metadata
+
+     Probe the source for duration, dimensions, frame rate, codecs and bitrate without producing a new
+    video.
 
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
@@ -97,7 +100,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Optional[Union[ErrorBody, VideoInfoResponse]]:
-    """All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+    """Read video metadata
+
+     Probe the source for duration, dimensions, frame rate, codecs and bitrate without producing a new
+    video.
 
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
@@ -122,7 +128,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Response[Union[ErrorBody, VideoInfoResponse]]:
-    """All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+    """Read video metadata
+
+     Probe the source for duration, dimensions, frame rate, codecs and bitrate without producing a new
+    video.
 
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
@@ -150,7 +159,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Optional[Union[ErrorBody, VideoInfoResponse]]:
-    """All metadata for a video — duration, codecs, fps, dimensions, bitrate.
+    """Read video metadata
+
+     Probe the source for duration, dimensions, frame rate, codecs and bitrate without producing a new
+    video.
 
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.

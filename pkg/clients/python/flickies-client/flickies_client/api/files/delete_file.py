@@ -56,7 +56,10 @@ def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[Any, ErrorBody]]:
-    """
+    """Delete a staged file
+
+     Remove the file at the specified staging path.
+
     Args:
         path (str):
 
@@ -84,7 +87,10 @@ def sync(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[Any, ErrorBody]]:
-    """
+    """Delete a staged file
+
+     Remove the file at the specified staging path.
+
     Args:
         path (str):
 
@@ -107,7 +113,10 @@ async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[Any, ErrorBody]]:
-    """
+    """Delete a staged file
+
+     Remove the file at the specified staging path.
+
     Args:
         path (str):
 
@@ -133,7 +142,10 @@ async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[Any, ErrorBody]]:
-    """
+    """Delete a staged file
+
+     Remove the file at the specified staging path.
+
     Args:
         path (str):
 

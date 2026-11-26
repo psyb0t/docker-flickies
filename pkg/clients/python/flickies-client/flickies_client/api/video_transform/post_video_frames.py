@@ -97,7 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoFramesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Extract timestamped JPEG samples into a ZIP with a frames.json manifest.
+    """Extract sampled video frames
+
+     Sample frames at the requested time interval. The ZIP contains JPEG files and a manifest with their
+    timestamps.
 
     Args:
         body (VideoFramesRequest): Extract timestamped JPEG samples into a ZIP with a frames.json
@@ -127,7 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoFramesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Extract timestamped JPEG samples into a ZIP with a frames.json manifest.
+    """Extract sampled video frames
+
+     Sample frames at the requested time interval. The ZIP contains JPEG files and a manifest with their
+    timestamps.
 
     Args:
         body (VideoFramesRequest): Extract timestamped JPEG samples into a ZIP with a frames.json
@@ -152,7 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoFramesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Extract timestamped JPEG samples into a ZIP with a frames.json manifest.
+    """Extract sampled video frames
+
+     Sample frames at the requested time interval. The ZIP contains JPEG files and a manifest with their
+    timestamps.
 
     Args:
         body (VideoFramesRequest): Extract timestamped JPEG samples into a ZIP with a frames.json
@@ -180,7 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoFramesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Extract timestamped JPEG samples into a ZIP with a frames.json manifest.
+    """Extract sampled video frames
+
+     Sample frames at the requested time interval. The ZIP contains JPEG files and a manifest with their
+    timestamps.
 
     Args:
         body (VideoFramesRequest): Extract timestamped JPEG samples into a ZIP with a frames.json

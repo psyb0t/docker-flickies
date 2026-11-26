@@ -140,35 +140,58 @@ type BaseVideoInputRequest struct {
 
 // BaseVideoOutputRequest Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
 type BaseVideoOutputRequest struct {
-	AsyncJob     *bool                               `json:"async_job,omitempty"`
+	// AsyncJob Schedule work in the background and return a job ID. Use the job result's path to retrieve the output.
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// OutputFormat Container format for the output video.
 	OutputFormat *BaseVideoOutputRequestOutputFormat `json:"output_format,omitempty"`
-	OutputPath   *string                             `json:"output_path"`
-	OutputUrl    *string                             `json:"output_url"`
+
+	// OutputPath Relative staging path where the server should write the result.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl HTTP(S) URL that accepts a PUT of the result.
+	OutputUrl *string `json:"output_url"`
 
 	// WebhookUrl Notify URL on async completion (HMAC-signed).
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// BaseVideoOutputRequestOutputFormat defines model for BaseVideoOutputRequest.OutputFormat.
+// BaseVideoOutputRequestOutputFormat Container format for the output video.
 type BaseVideoOutputRequestOutputFormat string
 
 // EngineInfo defines model for EngineInfo.
 type EngineInfo struct {
-	CudaOnly    *bool   `json:"cuda_only,omitempty"`
+	// CudaOnly Whether the engine requires an NVIDIA GPU.
+	CudaOnly *bool `json:"cuda_only,omitempty"`
+
+	// Description Purpose of this configured engine.
 	Description *string `json:"description,omitempty"`
-	Executor    string  `json:"executor"`
+
+	// Executor Backend implementation for this engine.
+	Executor string `json:"executor"`
 
 	// LastUsedSecsAgo Seconds since this engine last served a request; null if never used.
 	LastUsedSecsAgo *float32 `json:"last_used_secs_ago"`
-	Loaded          bool     `json:"loaded"`
-	Noncommercial   bool     `json:"noncommercial"`
-	Slug            string   `json:"slug"`
-	Variant         *string  `json:"variant"`
-	VramGbMin       *float32 `json:"vram_gb_min"`
+
+	// Loaded Whether the engine is currently loaded into memory.
+	Loaded bool `json:"loaded"`
+
+	// Noncommercial Whether using the engine requires non-commercial opt-in.
+	Noncommercial bool `json:"noncommercial"`
+
+	// Slug Engine ID to use in API requests.
+	Slug string `json:"slug"`
+
+	// Variant Model variant, when the backend provides one.
+	Variant *string `json:"variant"`
+
+	// VramGbMin Estimated minimum GPU memory in gigabytes.
+	VramGbMin *float32 `json:"vram_gb_min"`
 }
 
 // EngineList defines model for EngineList.
 type EngineList struct {
+	// Engines Registered engines and their current load state.
 	Engines []EngineInfo `json:"engines"`
 }
 
@@ -186,82 +209,130 @@ type ErrorBody struct {
 
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
+	// AvailableEngines Engine slugs registered with the server.
 	AvailableEngines []string `json:"available_engines"`
 
 	// Device auto / cpu / cuda
-	Device         string    `json:"device"`
+	Device string `json:"device"`
+
+	// EnabledEngines Engine slugs enabled by this deployment.
 	EnabledEngines *[]string `json:"enabled_engines,omitempty"`
 
 	// LoadedEngine Currently resident engine slug, or null if none loaded.
-	LoadedEngine         *string `json:"loaded_engine"`
-	NoncommercialEnabled bool    `json:"noncommercial_enabled"`
-	Status               string  `json:"status"`
-	Version              string  `json:"version"`
+	LoadedEngine *string `json:"loaded_engine"`
+
+	// NoncommercialEnabled Whether this deployment allows engines that require non-commercial opt-in.
+	NoncommercialEnabled bool `json:"noncommercial_enabled"`
+
+	// Status Current state returned by the service.
+	Status string `json:"status"`
+
+	// Version Flickies version running on the server.
+	Version string `json:"version"`
 }
 
 // JobAcceptedResponse defines model for JobAcceptedResponse.
 type JobAcceptedResponse struct {
-	JobId  openapi_types.UUID `json:"job_id"`
-	Status string             `json:"status"`
+	// JobId ID of an asynchronous job. Use it to poll for the result.
+	JobId openapi_types.UUID `json:"job_id"`
+
+	// Status Accepted indicates that the job has been queued.
+	Status string `json:"status"`
 }
 
 // JobStatusResponse defines model for JobStatusResponse.
 type JobStatusResponse struct {
+	// Error Failure details when the job fails.
 	Error *struct {
 		Code    *string `json:"code,omitempty"`
 		Message *string `json:"message,omitempty"`
 	} `json:"error"`
-	JobId  openapi_types.UUID      `json:"job_id"`
+
+	// JobId ID of an asynchronous job. Use it to poll for the result.
+	JobId openapi_types.UUID `json:"job_id"`
+
+	// Result Output metadata once the job finishes successfully.
 	Result *map[string]interface{} `json:"result"`
+
+	// Status Current job state. Poll again while the status is pending or running.
 	Status JobStatusResponseStatus `json:"status"`
 }
 
-// JobStatusResponseStatus defines model for JobStatusResponse.Status.
+// JobStatusResponseStatus Current job state. Poll again while the status is pending or running.
 type JobStatusResponseStatus string
 
 // StagedOutputResponse defines model for StagedOutputResponse.
 type StagedOutputResponse struct {
+	// DurationSec Duration in seconds.
 	DurationSec *float32 `json:"duration_sec"`
-	Height      *int     `json:"height"`
-	Path        string   `json:"path"`
-	Sha256      *string  `json:"sha256"`
-	Size        int      `json:"size"`
-	Width       *int     `json:"width"`
+
+	// Height Height in pixels.
+	Height *int `json:"height"`
+
+	// Path Relative staging path to the output file.
+	Path string `json:"path"`
+
+	// Sha256 SHA-256 checksum of the output bytes.
+	Sha256 *string `json:"sha256"`
+
+	// Size Size of the output in bytes.
+	Size int `json:"size"`
+
+	// Width Width in pixels.
+	Width *int `json:"width"`
 }
 
 // TimedWord defines model for TimedWord.
 type TimedWord struct {
-	EndSec   float32 `json:"end_sec"`
+	// EndSec End time in seconds from the start of the source.
+	EndSec float32 `json:"end_sec"`
+
+	// StartSec Start time in seconds from the start of the source.
 	StartSec float32 `json:"start_sec"`
-	Text     string  `json:"text"`
+
+	// Text Word or token spoken during this time interval.
+	Text string `json:"text"`
 }
 
 // UrlOutputResponse defines model for UrlOutputResponse.
 type UrlOutputResponse struct {
+	// Sha256 SHA-256 checksum of the output bytes.
 	Sha256 *string `json:"sha256"`
-	Size   int     `json:"size"`
-	Url    string  `json:"url"`
+
+	// Size Size of the output in bytes.
+	Size int `json:"size"`
+
+	// Url Destination URL used to write the output.
+	Url string `json:"url"`
 }
 
 // VideoAnalyzeRequest Report black frames, frozen video and silent intervals in a JSON file.
 type VideoAnalyzeRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob    *bool    `json:"async_job,omitempty"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// BlackMinSec Shortest black interval to report, in seconds.
 	BlackMinSec *float32 `json:"black_min_sec,omitempty"`
 
 	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl      *string  `json:"file_url"`
+	FileUrl *string `json:"file_url"`
+
+	// FreezeMinSec Shortest frozen interval to report, in seconds.
 	FreezeMinSec *float32 `json:"freeze_min_sec,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl     *string  `json:"output_url"`
-	SilenceDb     *float32 `json:"silence_db,omitempty"`
+	OutputUrl *string `json:"output_url"`
+
+	// SilenceDb Audio level in decibels below which a signal is considered silent.
+	SilenceDb *float32 `json:"silence_db,omitempty"`
+
+	// SilenceMinSec Shortest quiet interval to report, in seconds.
 	SilenceMinSec *float32 `json:"silence_min_sec,omitempty"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
@@ -271,16 +342,22 @@ type VideoAnalyzeRequest struct {
 // VideoComposeRequest Combine two clips side by side, stacked or picture-in-picture.
 type VideoComposeRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob *bool                     `json:"async_job,omitempty"`
-	Audio    *VideoComposeRequestAudio `json:"audio,omitempty"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// Audio Choose the first clip's audio, the second clip's audio, or silence.
+	Audio *VideoComposeRequestAudio `json:"audio,omitempty"`
 
 	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl *string                    `json:"file_url"`
-	Height  *int                       `json:"height,omitempty"`
-	Layout  *VideoComposeRequestLayout `json:"layout,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// Height Height in pixels.
+	Height *int `json:"height,omitempty"`
+
+	// Layout Arrangement of the input clips.
+	Layout *VideoComposeRequestLayout `json:"layout,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
@@ -293,21 +370,27 @@ type VideoComposeRequest struct {
 
 	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
-	Width      *int    `json:"width,omitempty"`
+
+	// Width Width in pixels.
+	Width *int `json:"width,omitempty"`
 }
 
-// VideoComposeRequestAudio defines model for VideoComposeRequest.Audio.
+// VideoComposeRequestAudio Choose the first clip's audio, the second clip's audio, or silence.
 type VideoComposeRequestAudio string
 
-// VideoComposeRequestLayout defines model for VideoComposeRequest.Layout.
+// VideoComposeRequestLayout Arrangement of the input clips.
 type VideoComposeRequestLayout string
 
 // VideoConcatRequest Concatenate ≥2 videos in order. Exactly one of inputs_paths / inputs_urls must be provided.
 type VideoConcatRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob    *bool     `json:"async_job,omitempty"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// InputsPaths Relative staging paths for clips in playback order.
 	InputsPaths *[]string `json:"inputs_paths"`
-	InputsUrls  *[]string `json:"inputs_urls"`
+
+	// InputsUrls HTTP(S) URLs for clips in playback order.
+	InputsUrls *[]string `json:"inputs_urls"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
@@ -339,9 +422,13 @@ type VideoCropRequest struct {
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl *string               `json:"file_url"`
-	Height  int                   `json:"height"`
-	Mode    *VideoCropRequestMode `json:"mode,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// Height Height in pixels.
+	Height int `json:"height"`
+
+	// Mode Crop to fill, pad with letterboxing, or fill unused space with a blurred background.
+	Mode *VideoCropRequestMode `json:"mode,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
@@ -351,12 +438,18 @@ type VideoCropRequest struct {
 
 	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
-	Width      int     `json:"width"`
-	X          *int    `json:"x"`
-	Y          *int    `json:"y"`
+
+	// Width Width in pixels.
+	Width int `json:"width"`
+
+	// X Left edge of an explicit crop, in pixels.
+	X *int `json:"x"`
+
+	// Y Top edge of an explicit crop, in pixels.
+	Y *int `json:"y"`
 }
 
-// VideoCropRequestMode defines model for VideoCropRequest.Mode.
+// VideoCropRequestMode Crop to fill, pad with letterboxing, or fill unused space with a blurred background.
 type VideoCropRequestMode string
 
 // VideoExtractAudioRequest Exactly one of file_path / file_url MUST be provided. Enforced at handler boundary.
@@ -371,14 +464,18 @@ type VideoFramesRequest struct {
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl   *string `json:"file_url"`
-	MaxFrames *int    `json:"max_frames,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// MaxFrames Maximum number of frames to sample.
+	MaxFrames *int `json:"max_frames,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl         *string  `json:"output_url"`
+	OutputUrl *string `json:"output_url"`
+
+	// SampleIntervalSec Time between sampled frames, in seconds.
 	SampleIntervalSec *float32 `json:"sample_interval_sec,omitempty"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
@@ -390,15 +487,32 @@ type VideoInfoRequest = BaseVideoInputRequest
 
 // VideoInfoResponse defines model for VideoInfoResponse.
 type VideoInfoResponse struct {
-	AudioCodec      *string  `json:"audio_codec"`
-	Bitrate         *int     `json:"bitrate"`
-	ContainerFormat *string  `json:"container_format"`
-	DurationSec     *float32 `json:"duration_sec,omitempty"`
-	Fps             *float32 `json:"fps,omitempty"`
-	Height          *int     `json:"height,omitempty"`
-	SizeBytes       *int     `json:"size_bytes,omitempty"`
-	VideoCodec      *string  `json:"video_codec,omitempty"`
-	Width           *int     `json:"width,omitempty"`
+	// AudioCodec Audio codec detected in the input, or null for a silent video.
+	AudioCodec *string `json:"audio_codec"`
+
+	// Bitrate Overall stream bitrate in bits per second, when known.
+	Bitrate *int `json:"bitrate"`
+
+	// ContainerFormat Container names reported by the probe.
+	ContainerFormat *string `json:"container_format"`
+
+	// DurationSec Duration in seconds.
+	DurationSec *float32 `json:"duration_sec,omitempty"`
+
+	// Fps Video frames per second.
+	Fps *float32 `json:"fps,omitempty"`
+
+	// Height Height in pixels.
+	Height *int `json:"height,omitempty"`
+
+	// SizeBytes Input file size in bytes.
+	SizeBytes *int `json:"size_bytes,omitempty"`
+
+	// VideoCodec Video codec detected in the input.
+	VideoCodec *string `json:"video_codec,omitempty"`
+
+	// Width Width in pixels.
+	Width *int `json:"width,omitempty"`
 }
 
 // VideoLipsyncRequest Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
@@ -410,8 +524,10 @@ type VideoMuxAudioRequest = BaseVideoOutputRequest
 // VideoOverlayRequest Draw a staged image (PNG, JPEG or WebP) or a text label during the specified interval.
 type VideoOverlayRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob *bool   `json:"async_job,omitempty"`
-	EndSec   float32 `json:"end_sec"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// EndSec End time in seconds from the start of the source.
+	EndSec float32 `json:"end_sec"`
 
 	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
@@ -426,58 +542,81 @@ type VideoOverlayRequest struct {
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl *string  `json:"output_url"`
-	StartSec  *float32 `json:"start_sec,omitempty"`
-	Text      *string  `json:"text"`
+	OutputUrl *string `json:"output_url"`
+
+	// StartSec Start time in seconds from the start of the source.
+	StartSec *float32 `json:"start_sec,omitempty"`
+
+	// Text Text to render into the video.
+	Text *string `json:"text"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
-	X          *int    `json:"x,omitempty"`
-	Y          *int    `json:"y,omitempty"`
+
+	// X Horizontal pixel offset measured from the left edge.
+	X *int `json:"x,omitempty"`
+
+	// Y Vertical pixel offset measured from the top edge.
+	Y *int `json:"y,omitempty"`
 }
 
 // VideoRestoreRequest defines model for VideoRestoreRequest.
 type VideoRestoreRequest struct {
+	// AsyncJob Schedule work in the background and return a job ID. Use the job result's path to retrieve the output.
 	AsyncJob *bool `json:"async_job,omitempty"`
 
 	// FilePath FILES_DIR-relative path of an already-uploaded video.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) URL the server fetches.
-	FileUrl      *string                          `json:"file_url"`
+	FileUrl *string `json:"file_url"`
+
+	// OutputFormat Container format for the output video.
 	OutputFormat *VideoRestoreRequestOutputFormat `json:"output_format,omitempty"`
-	OutputPath   *string                          `json:"output_path"`
-	OutputUrl    *string                          `json:"output_url"`
+
+	// OutputPath Relative staging path where the server should write the result.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl HTTP(S) URL that accepts a PUT of the result.
+	OutputUrl *string `json:"output_url"`
 
 	// WebhookUrl Notify URL on async completion (HMAC-signed).
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// VideoRestoreRequestOutputFormat defines model for VideoRestoreRequest.OutputFormat.
+// VideoRestoreRequestOutputFormat Container format for the output video.
 type VideoRestoreRequestOutputFormat string
 
 // VideoScaleRequest defines model for VideoScaleRequest.
 type VideoScaleRequest struct {
+	// AsyncJob Schedule work in the background and return a job ID. Use the job result's path to retrieve the output.
 	AsyncJob *bool `json:"async_job,omitempty"`
 
 	// FilePath FILES_DIR-relative path of an already-uploaded video.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) URL the server fetches.
-	FileUrl      *string                        `json:"file_url"`
+	FileUrl *string `json:"file_url"`
+
+	// OutputFormat Container format for the output video.
 	OutputFormat *VideoScaleRequestOutputFormat `json:"output_format,omitempty"`
-	OutputPath   *string                        `json:"output_path"`
-	OutputUrl    *string                        `json:"output_url"`
+
+	// OutputPath Relative staging path where the server should write the result.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl HTTP(S) URL that accepts a PUT of the result.
+	OutputUrl *string `json:"output_url"`
 
 	// WebhookUrl Notify URL on async completion (HMAC-signed).
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// VideoScaleRequestOutputFormat defines model for VideoScaleRequest.OutputFormat.
+// VideoScaleRequestOutputFormat Container format for the output video.
 type VideoScaleRequestOutputFormat string
 
 // VideoScenesRequest Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed clips.
 type VideoScenesRequest struct {
+	// Artifacts Choose manifest only, preview frames, or trimmed scene clips.
 	Artifacts *VideoScenesRequestArtifacts `json:"artifacts,omitempty"`
 
 	// AsyncJob Schedule the job and stage the result under jobs/.
@@ -487,21 +626,25 @@ type VideoScenesRequest struct {
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl   *string `json:"file_url"`
-	MaxScenes *int    `json:"max_scenes,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// MaxScenes Maximum number of scenes to include.
+	MaxScenes *int `json:"max_scenes,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl *string  `json:"output_url"`
+	OutputUrl *string `json:"output_url"`
+
+	// Threshold Minimum change score used to identify a scene cut. Higher values detect fewer cuts.
 	Threshold *float32 `json:"threshold,omitempty"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// VideoScenesRequestArtifacts defines model for VideoScenesRequest.Artifacts.
+// VideoScenesRequestArtifacts Choose manifest only, preview frames, or trimmed scene clips.
 type VideoScenesRequestArtifacts string
 
 // VideoSubtitlesRequest Burn in an SRT or ASS file, embed a selectable track, or build karaoke captions from word timestamps.
@@ -513,9 +656,13 @@ type VideoSubtitlesRequest struct {
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl  *string                    `json:"file_url"`
-	FontSize *int                       `json:"font_size,omitempty"`
-	Mode     *VideoSubtitlesRequestMode `json:"mode,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// FontSize Font size for generated karaoke captions.
+	FontSize *int `json:"font_size,omitempty"`
+
+	// Mode Burn captions into the image or embed them as a selectable subtitle track.
+	Mode *VideoSubtitlesRequestMode `json:"mode,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
@@ -527,42 +674,58 @@ type VideoSubtitlesRequest struct {
 	SubtitlePath *string `json:"subtitle_path"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
-	WebhookUrl   *string      `json:"webhook_url"`
-	Words        *[]TimedWord `json:"words"`
-	WordsPerLine *int         `json:"words_per_line,omitempty"`
+	WebhookUrl *string `json:"webhook_url"`
+
+	// Words Words and timestamps used to generate karaoke captions.
+	Words *[]TimedWord `json:"words"`
+
+	// WordsPerLine Maximum number of words grouped into each karaoke line.
+	WordsPerLine *int `json:"words_per_line,omitempty"`
 }
 
-// VideoSubtitlesRequestMode defines model for VideoSubtitlesRequest.Mode.
+// VideoSubtitlesRequestMode Burn captions into the image or embed them as a selectable subtitle track.
 type VideoSubtitlesRequestMode string
 
 // VideoThumbnailGridRequest defines model for VideoThumbnailGridRequest.
 type VideoThumbnailGridRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob   *bool `json:"async_job,omitempty"`
-	CellHeight *int  `json:"cell_height,omitempty"`
-	CellWidth  *int  `json:"cell_width,omitempty"`
-	Cols       int   `json:"cols"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// CellHeight Height in pixels of each thumbnail in the grid.
+	CellHeight *int `json:"cell_height,omitempty"`
+
+	// CellWidth Width in pixels of each thumbnail in the grid.
+	CellWidth *int `json:"cell_width,omitempty"`
+
+	// Cols Number of columns in the thumbnail grid.
+	Cols int `json:"cols"`
 
 	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) input URL.
-	FileUrl *string                          `json:"file_url"`
-	Layout  *VideoThumbnailGridRequestLayout `json:"layout,omitempty"`
+	FileUrl *string `json:"file_url"`
+
+	// Layout How thumbnails are arranged in the output image.
+	Layout *VideoThumbnailGridRequestLayout `json:"layout,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl  *string `json:"output_url"`
-	Rows       int     `json:"rows"`
-	Timestamps *bool   `json:"timestamps,omitempty"`
+	OutputUrl *string `json:"output_url"`
+
+	// Rows Number of rows in the thumbnail grid.
+	Rows int `json:"rows"`
+
+	// Timestamps Source offsets in seconds for selected thumbnails.
+	Timestamps *bool `json:"timestamps,omitempty"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// VideoThumbnailGridRequestLayout defines model for VideoThumbnailGridRequest.Layout.
+// VideoThumbnailGridRequestLayout How thumbnails are arranged in the output image.
 type VideoThumbnailGridRequestLayout string
 
 // VideoTranscodeRequest Universal re-encode. `output_format` in BaseVideoOutputRequest drives
@@ -571,9 +734,13 @@ type VideoThumbnailGridRequestLayout string
 // to the re-encode; gif-specific options live under `gif_options`.
 type VideoTranscodeRequest struct {
 	// AsyncJob Schedule the job and stage the result under jobs/.
-	AsyncJob   *bool   `json:"async_job,omitempty"`
+	AsyncJob *bool `json:"async_job,omitempty"`
+
+	// AudioCodec Audio codec to write, when the chosen container supports it.
 	AudioCodec *string `json:"audio_codec"`
-	Crf        *int    `json:"crf"`
+
+	// Crf Constant rate factor controlling quality. With compatible codecs, lower values preserve more detail.
+	Crf *int `json:"crf"`
 
 	// FilePath Staged input path. Provide exactly one input.
 	FilePath *string `json:"file_path"`
@@ -593,15 +760,21 @@ type VideoTranscodeRequest struct {
 	} `json:"gif_options"`
 
 	// MaxSizeBytes MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with CRF.
-	MaxSizeBytes *int                               `json:"max_size_bytes"`
+	MaxSizeBytes *int `json:"max_size_bytes"`
+
+	// OutputFormat Container format for the output video.
 	OutputFormat *VideoTranscodeRequestOutputFormat `json:"output_format,omitempty"`
 
 	// OutputPath Staged output path in synchronous mode.
 	OutputPath *string `json:"output_path"`
 
 	// OutputUrl Presigned PUT URL in synchronous mode.
-	OutputUrl  *string `json:"output_url"`
-	Preset     *string `json:"preset"`
+	OutputUrl *string `json:"output_url"`
+
+	// Preset Encoding speed preset for a compatible encoder.
+	Preset *string `json:"preset"`
+
+	// VideoCodec Video codec to write, when the chosen container supports it.
 	VideoCodec *string `json:"video_codec"`
 
 	// WebhookUrl Callback URL for asynchronous completion.
@@ -611,36 +784,46 @@ type VideoTranscodeRequest struct {
 // VideoTranscodeRequestGifOptionsPaletteMode defines model for VideoTranscodeRequest.GifOptions.PaletteMode.
 type VideoTranscodeRequestGifOptionsPaletteMode string
 
-// VideoTranscodeRequestOutputFormat defines model for VideoTranscodeRequest.OutputFormat.
+// VideoTranscodeRequestOutputFormat Container format for the output video.
 type VideoTranscodeRequestOutputFormat string
 
 // VideoTransition defines model for VideoTransition.
 type VideoTransition struct {
-	DurationSec float32               `json:"duration_sec"`
-	Effect      VideoTransitionEffect `json:"effect"`
+	// DurationSec Duration in seconds.
+	DurationSec float32 `json:"duration_sec"`
+
+	// Effect Transition used between adjacent input clips.
+	Effect VideoTransitionEffect `json:"effect"`
 }
 
-// VideoTransitionEffect defines model for VideoTransition.Effect.
+// VideoTransitionEffect Transition used between adjacent input clips.
 type VideoTransitionEffect string
 
 // VideoTrimRequest defines model for VideoTrimRequest.
 type VideoTrimRequest struct {
+	// AsyncJob Schedule work in the background and return a job ID. Use the job result's path to retrieve the output.
 	AsyncJob *bool `json:"async_job,omitempty"`
 
 	// FilePath FILES_DIR-relative path of an already-uploaded video.
 	FilePath *string `json:"file_path"`
 
 	// FileUrl HTTP(S) URL the server fetches.
-	FileUrl      *string                       `json:"file_url"`
+	FileUrl *string `json:"file_url"`
+
+	// OutputFormat Container format for the output video.
 	OutputFormat *VideoTrimRequestOutputFormat `json:"output_format,omitempty"`
-	OutputPath   *string                       `json:"output_path"`
-	OutputUrl    *string                       `json:"output_url"`
+
+	// OutputPath Relative staging path where the server should write the result.
+	OutputPath *string `json:"output_path"`
+
+	// OutputUrl HTTP(S) URL that accepts a PUT of the result.
+	OutputUrl *string `json:"output_url"`
 
 	// WebhookUrl Notify URL on async completion (HMAC-signed).
 	WebhookUrl *string `json:"webhook_url"`
 }
 
-// VideoTrimRequestOutputFormat defines model for VideoTrimRequest.OutputFormat.
+// VideoTrimRequestOutputFormat Container format for the output video.
 type VideoTrimRequestOutputFormat string
 
 // EngineSlug defines model for EngineSlug.

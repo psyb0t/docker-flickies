@@ -13,12 +13,12 @@ T = TypeVar("T", bound="StagedOutputResponse")
 class StagedOutputResponse:
     """
     Attributes:
-        path (str):
-        size (int):
-        sha256 (Union[None, Unset, str]):
-        duration_sec (Union[None, Unset, float]):
-        width (Union[None, Unset, int]):
-        height (Union[None, Unset, int]):
+        path (str): Relative staging path to the output file.
+        size (int): Size of the output in bytes.
+        sha256 (Union[None, Unset, str]): SHA-256 checksum of the output bytes.
+        duration_sec (Union[None, Unset, float]): Duration in seconds.
+        width (Union[None, Unset, int]): Width in pixels.
+        height (Union[None, Unset, int]): Height in pixels.
     """
 
     path: str

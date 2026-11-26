@@ -97,7 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoCropRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
+    """Crop a video or fit a canvas
+
+     Choose a target size in pixels. Crop the source, add letterboxing, or fill the unused canvas with a
+    blurred background.
 
     Args:
         body (VideoCropRequest): Crop to a rectangle or fit to a canvas with center crop,
@@ -127,7 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoCropRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
+    """Crop a video or fit a canvas
+
+     Choose a target size in pixels. Crop the source, add letterboxing, or fill the unused canvas with a
+    blurred background.
 
     Args:
         body (VideoCropRequest): Crop to a rectangle or fit to a canvas with center crop,
@@ -152,7 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoCropRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
+    """Crop a video or fit a canvas
+
+     Choose a target size in pixels. Crop the source, add letterboxing, or fill the unused canvas with a
+    blurred background.
 
     Args:
         body (VideoCropRequest): Crop to a rectangle or fit to a canvas with center crop,
@@ -180,7 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoCropRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
+    """Crop a video or fit a canvas
+
+     Choose a target size in pixels. Crop the source, add letterboxing, or fill the unused canvas with a
+    blurred background.
 
     Args:
         body (VideoCropRequest): Crop to a rectangle or fit to a canvas with center crop,

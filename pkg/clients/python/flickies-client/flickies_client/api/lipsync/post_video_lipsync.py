@@ -97,7 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Drive a face from an audio track.
+    """Lip-sync a face
+
+     Animate the face in a source video or still image using a separate audio track. Use an engine that
+    supports the source type and the deployment's hardware.
 
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
@@ -127,7 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Drive a face from an audio track.
+    """Lip-sync a face
+
+     Animate the face in a source video or still image using a separate audio track. Use an engine that
+    supports the source type and the deployment's hardware.
 
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
@@ -152,7 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Drive a face from an audio track.
+    """Lip-sync a face
+
+     Animate the face in a source video or still image using a separate audio track. Use an engine that
+    supports the source type and the deployment's hardware.
 
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
@@ -180,7 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Drive a face from an audio track.
+    """Lip-sync a face
+
+     Animate the face in a source video or still image using a separate audio track. Use an engine that
+    supports the source type and the deployment's hardware.
 
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync

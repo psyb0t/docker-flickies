@@ -15,17 +15,18 @@ class VideoCropRequest:
     """Crop to a rectangle or fit to a canvas with center crop, letterbox padding or a blurred background.
 
     Attributes:
-        width (int):
-        height (int):
+        width (int): Width in pixels.
+        height (int): Height in pixels.
         file_path (Union[None, Unset, str]): Staged input path. Provide exactly one input.
         file_url (Union[None, Unset, str]): HTTP(S) input URL.
         output_path (Union[None, Unset, str]): Staged output path in synchronous mode.
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        mode (Union[Unset, VideoCropRequestMode]):  Default: VideoCropRequestMode.CROP.
-        x (Union[None, Unset, int]):
-        y (Union[None, Unset, int]):
+        mode (Union[Unset, VideoCropRequestMode]): Crop to fill, pad with letterboxing, or fill unused space with a
+            blurred background. Default: VideoCropRequestMode.CROP.
+        x (Union[None, Unset, int]): Left edge of an explicit crop, in pixels.
+        y (Union[None, Unset, int]): Top edge of an explicit crop, in pixels.
     """
 
     width: int

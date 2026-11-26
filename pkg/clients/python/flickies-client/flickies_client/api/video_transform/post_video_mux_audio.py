@@ -75,7 +75,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Add audio to a video
+
+     Combine a video and an audio track. Set the replacement option to discard an existing audio track.
+
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
             mode; both optional in async mode (auto-staged).
@@ -104,7 +107,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Add audio to a video
+
+     Combine a video and an audio track. Set the replacement option to discard an existing audio track.
+
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
             mode; both optional in async mode (auto-staged).
@@ -128,7 +134,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Add audio to a video
+
+     Combine a video and an audio track. Set the replacement option to discard an existing audio track.
+
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
             mode; both optional in async mode (auto-staged).
@@ -155,7 +164,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoOutputRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Add audio to a video
+
+     Combine a video and an audio track. Set the replacement option to discard an existing audio track.
+
     Args:
         body (BaseVideoOutputRequest): Exactly one of output_path / output_url required in sync
             mode; both optional in async mode (auto-staged).

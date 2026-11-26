@@ -11,9 +11,9 @@ T = TypeVar("T", bound="TimedWord")
 class TimedWord:
     """
     Attributes:
-        text (str):
-        start_sec (float):
-        end_sec (float):
+        text (str): Word or token spoken during this time interval.
+        start_sec (float): Start time in seconds from the start of the source.
+        end_sec (float): End time in seconds from the start of the source.
     """
 
     text: str

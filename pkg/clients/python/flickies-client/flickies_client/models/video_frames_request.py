@@ -20,8 +20,8 @@ class VideoFramesRequest:
         output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-        sample_interval_sec (Union[Unset, float]):  Default: 1.0.
-        max_frames (Union[Unset, int]):  Default: 60.
+        sample_interval_sec (Union[Unset, float]): Time between sampled frames, in seconds. Default: 1.0.
+        max_frames (Union[Unset, int]): Maximum number of frames to sample. Default: 60.
     """
 
     file_path: Union[None, Unset, str] = UNSET

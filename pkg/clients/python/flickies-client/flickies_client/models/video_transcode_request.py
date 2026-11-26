@@ -28,14 +28,15 @@ class VideoTranscodeRequest:
             output_url (Union[None, Unset, str]): Presigned PUT URL in synchronous mode.
             async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
             webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
-            output_format (Union[Unset, VideoTranscodeRequestOutputFormat]):  Default:
+            output_format (Union[Unset, VideoTranscodeRequestOutputFormat]): Container format for the output video. Default:
                 VideoTranscodeRequestOutputFormat.MP4.
             max_size_bytes (Union[None, Unset, int]): MP4 size ceiling in bytes. Uses H.264/AAC and cannot be combined with
                 CRF.
-            video_codec (Union[None, Unset, str]):
-            audio_codec (Union[None, Unset, str]):
-            crf (Union[None, Unset, int]):
-            preset (Union[None, Unset, str]):
+            video_codec (Union[None, Unset, str]): Video codec to write, when the chosen container supports it.
+            audio_codec (Union[None, Unset, str]): Audio codec to write, when the chosen container supports it.
+            crf (Union[None, Unset, int]): Constant rate factor controlling quality. With compatible codecs, lower values
+                preserve more detail.
+            preset (Union[None, Unset, str]): Encoding speed preset for a compatible encoder.
             fps (Union[None, Unset, float]): Re-encode at this frame rate. Applies to all output formats.
             gif_options (Union['VideoTranscodeRequestGifOptionsType0', None, Unset]): Only consulted when output_format=gif.
     """

@@ -9,7 +9,7 @@ T = TypeVar("T", bound="JobStatusResponseResultType0")
 
 @_attrs_define
 class JobStatusResponseResultType0:
-    """ """
+    """Output metadata once the job finishes successfully."""
 
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 

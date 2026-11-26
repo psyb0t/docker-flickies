@@ -15,12 +15,13 @@ class BaseVideoOutputRequest:
     """Exactly one of output_path / output_url required in sync mode; both optional in async mode (auto-staged).
 
     Attributes:
-        output_path (Union[None, Unset, str]):
-        output_url (Union[None, Unset, str]):
-        async_job (Union[Unset, bool]):  Default: False.
+        output_path (Union[None, Unset, str]): Relative staging path where the server should write the result.
+        output_url (Union[None, Unset, str]): HTTP(S) URL that accepts a PUT of the result.
+        async_job (Union[Unset, bool]): Schedule work in the background and return a job ID. Use the job result's path
+            to retrieve the output. Default: False.
         webhook_url (Union[None, Unset, str]): Notify URL on async completion (HMAC-signed).
-        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]):  Default:
-            BaseVideoOutputRequestOutputFormat.MP4.
+        output_format (Union[Unset, BaseVideoOutputRequestOutputFormat]): Container format for the output video.
+            Default: BaseVideoOutputRequestOutputFormat.MP4.
     """
 
     output_path: Union[None, Unset, str] = UNSET

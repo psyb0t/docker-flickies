@@ -30,6 +30,7 @@ datamodel-codegen \
     --input "${OPENAPI}" \
     --input-file-type openapi \
     --output "${OUT_FILE}" \
+    --disable-timestamp \
     --output-model-type pydantic_v2.BaseModel \
     --use-annotated \
     --use-standard-collections \

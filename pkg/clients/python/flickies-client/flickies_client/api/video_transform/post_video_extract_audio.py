@@ -75,7 +75,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Extract audio from a video
+
+     Save the clip's audio track as a separate file in the selected audio format.
+
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
             Enforced at handler boundary.
@@ -104,7 +107,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Extract audio from a video
+
+     Save the clip's audio track as a separate file in the selected audio format.
+
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
             Enforced at handler boundary.
@@ -128,7 +134,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Extract audio from a video
+
+     Save the clip's audio track as a separate file in the selected audio format.
+
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
             Enforced at handler boundary.
@@ -155,7 +164,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: BaseVideoInputRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Extract audio from a video
+
+     Save the clip's audio track as a separate file in the selected audio format.
+
     Args:
         body (BaseVideoInputRequest): Exactly one of file_path / file_url MUST be provided.
             Enforced at handler boundary.

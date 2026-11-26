@@ -56,7 +56,9 @@ def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[Any, ErrorBody]]:
-    """Evict the engine from VRAM (no-op if not loaded).
+    """Unload a video engine
+
+     Release the selected inference engine from memory. The next request that needs it can load it again.
 
     Args:
         slug (str):
@@ -85,7 +87,9 @@ def sync(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[Any, ErrorBody]]:
-    """Evict the engine from VRAM (no-op if not loaded).
+    """Unload a video engine
+
+     Release the selected inference engine from memory. The next request that needs it can load it again.
 
     Args:
         slug (str):
@@ -109,7 +113,9 @@ async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[Any, ErrorBody]]:
-    """Evict the engine from VRAM (no-op if not loaded).
+    """Unload a video engine
+
+     Release the selected inference engine from memory. The next request that needs it can load it again.
 
     Args:
         slug (str):
@@ -136,7 +142,9 @@ async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[Any, ErrorBody]]:
-    """Evict the engine from VRAM (no-op if not loaded).
+    """Unload a video engine
+
+     Release the selected inference engine from memory. The next request that needs it can load it again.
 
     Args:
         slug (str):

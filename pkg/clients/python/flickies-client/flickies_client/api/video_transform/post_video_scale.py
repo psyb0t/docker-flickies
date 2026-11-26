@@ -75,7 +75,11 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoScaleRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Resize a video
+
+     Set the output width and height in pixels. Use the aspect-ratio option to avoid stretching the
+    image.
+
     Args:
         body (VideoScaleRequest):
 
@@ -103,7 +107,11 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoScaleRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Resize a video
+
+     Set the output width and height in pixels. Use the aspect-ratio option to avoid stretching the
+    image.
+
     Args:
         body (VideoScaleRequest):
 
@@ -126,7 +134,11 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoScaleRequest,
 ) -> Response[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Resize a video
+
+     Set the output width and height in pixels. Use the aspect-ratio option to avoid stretching the
+    image.
+
     Args:
         body (VideoScaleRequest):
 
@@ -152,7 +164,11 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoScaleRequest,
 ) -> Optional[Union["StagedOutputResponse", "UrlOutputResponse"]]:
-    """
+    """Resize a video
+
+     Set the output width and height in pixels. Use the aspect-ratio option to avoid stretching the
+    image.
+
     Args:
         body (VideoScaleRequest):
 

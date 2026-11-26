@@ -26,10 +26,11 @@ class VideoSubtitlesRequest:
         async_job (Union[Unset, bool]): Schedule the job and stage the result under jobs/. Default: False.
         webhook_url (Union[None, Unset, str]): Callback URL for asynchronous completion.
         subtitle_path (Union[None, Unset, str]): Staged SRT or ASS path. Supply exactly one of subtitle_path and words.
-        words (Union[None, Unset, list['TimedWord']]):
-        mode (Union[Unset, VideoSubtitlesRequestMode]):  Default: VideoSubtitlesRequestMode.BURN.
-        words_per_line (Union[Unset, int]):  Default: 4.
-        font_size (Union[Unset, int]):  Default: 56.
+        words (Union[None, Unset, list['TimedWord']]): Words and timestamps used to generate karaoke captions.
+        mode (Union[Unset, VideoSubtitlesRequestMode]): Burn captions into the image or embed them as a selectable
+            subtitle track. Default: VideoSubtitlesRequestMode.BURN.
+        words_per_line (Union[Unset, int]): Maximum number of words grouped into each karaoke line. Default: 4.
+        font_size (Union[Unset, int]): Font size for generated karaoke captions. Default: 56.
     """
 
     file_path: Union[None, Unset, str] = UNSET

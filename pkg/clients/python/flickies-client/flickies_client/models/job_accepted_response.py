@@ -12,8 +12,8 @@ T = TypeVar("T", bound="JobAcceptedResponse")
 class JobAcceptedResponse:
     """
     Attributes:
-        job_id (UUID):
-        status (str):
+        job_id (UUID): ID of an asynchronous job. Use it to poll for the result.
+        status (str): Accepted indicates that the job has been queued.
     """
 
     job_id: UUID

@@ -58,7 +58,11 @@ def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[ErrorBody, JobStatusResponse]]:
-    """
+    """Get a background job
+
+     Poll the job ID from a 202 response. On success, the result provides the staged output path to
+    download.
+
     Args:
         job_id (str):
 
@@ -86,7 +90,11 @@ def sync(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[ErrorBody, JobStatusResponse]]:
-    """
+    """Get a background job
+
+     Poll the job ID from a 202 response. On success, the result provides the staged output path to
+    download.
+
     Args:
         job_id (str):
 
@@ -109,7 +117,11 @@ async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Response[Union[ErrorBody, JobStatusResponse]]:
-    """
+    """Get a background job
+
+     Poll the job ID from a 202 response. On success, the result provides the staged output path to
+    download.
+
     Args:
         job_id (str):
 
@@ -135,7 +147,11 @@ async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
 ) -> Optional[Union[ErrorBody, JobStatusResponse]]:
-    """
+    """Get a background job
+
+     Poll the job ID from a 202 response. On success, the result provides the staged output path to
+    download.
+
     Args:
         job_id (str):
 

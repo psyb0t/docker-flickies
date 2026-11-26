@@ -15,7 +15,7 @@ T = TypeVar("T", bound="EngineList")
 class EngineList:
     """
     Attributes:
-        engines (list['EngineInfo']):
+        engines (list['EngineInfo']): Registered engines and their current load state.
     """
 
     engines: list["EngineInfo"]

@@ -85,7 +85,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoConcatRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Concatenate video clips
+
+     Join two or more clips in the supplied order. You can add transitions between clips.
+
     Args:
         body (VideoConcatRequest): Concatenate ≥2 videos in order. Exactly one of inputs_paths /
             inputs_urls must be provided.
@@ -114,7 +117,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoConcatRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Concatenate video clips
+
+     Join two or more clips in the supplied order. You can add transitions between clips.
+
     Args:
         body (VideoConcatRequest): Concatenate ≥2 videos in order. Exactly one of inputs_paths /
             inputs_urls must be provided.
@@ -138,7 +144,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoConcatRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Concatenate video clips
+
+     Join two or more clips in the supplied order. You can add transitions between clips.
+
     Args:
         body (VideoConcatRequest): Concatenate ≥2 videos in order. Exactly one of inputs_paths /
             inputs_urls must be provided.
@@ -165,7 +174,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoConcatRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Concatenate video clips
+
+     Join two or more clips in the supplied order. You can add transitions between clips.
+
     Args:
         body (VideoConcatRequest): Concatenate ≥2 videos in order. Exactly one of inputs_paths /
             inputs_urls must be provided.

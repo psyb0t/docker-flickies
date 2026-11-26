@@ -20,10 +20,10 @@ T = TypeVar("T", bound="JobStatusResponse")
 class JobStatusResponse:
     """
     Attributes:
-        job_id (UUID):
-        status (JobStatusResponseStatus):
-        result (Union['JobStatusResponseResultType0', None, Unset]):
-        error (Union['JobStatusResponseErrorType0', None, Unset]):
+        job_id (UUID): ID of an asynchronous job. Use it to poll for the result.
+        status (JobStatusResponseStatus): Current job state. Poll again while the status is pending or running.
+        result (Union['JobStatusResponseResultType0', None, Unset]): Output metadata once the job finishes successfully.
+        error (Union['JobStatusResponseErrorType0', None, Unset]): Failure details when the job fails.
     """
 
     job_id: UUID

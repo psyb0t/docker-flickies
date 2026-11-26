@@ -97,7 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoAnalyzeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Report black frames, frozen video and silent intervals in a JSON file.
+    """Detect black, frozen or silent intervals
+
+     Scan a clip for black frames, frozen video and quiet audio. Set the minimum durations and silence
+    threshold to control which intervals are reported.
 
     Args:
         body (VideoAnalyzeRequest): Report black frames, frozen video and silent intervals in a
@@ -127,7 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoAnalyzeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Report black frames, frozen video and silent intervals in a JSON file.
+    """Detect black, frozen or silent intervals
+
+     Scan a clip for black frames, frozen video and quiet audio. Set the minimum durations and silence
+    threshold to control which intervals are reported.
 
     Args:
         body (VideoAnalyzeRequest): Report black frames, frozen video and silent intervals in a
@@ -152,7 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoAnalyzeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Report black frames, frozen video and silent intervals in a JSON file.
+    """Detect black, frozen or silent intervals
+
+     Scan a clip for black frames, frozen video and quiet audio. Set the minimum durations and silence
+    threshold to control which intervals are reported.
 
     Args:
         body (VideoAnalyzeRequest): Report black frames, frozen video and silent intervals in a
@@ -180,7 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoAnalyzeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Report black frames, frozen video and silent intervals in a JSON file.
+    """Detect black, frozen or silent intervals
+
+     Scan a clip for black frames, frozen video and quiet audio. Set the minimum durations and silence
+    threshold to control which intervals are reported.
 
     Args:
         body (VideoAnalyzeRequest): Report black frames, frozen video and silent intervals in a

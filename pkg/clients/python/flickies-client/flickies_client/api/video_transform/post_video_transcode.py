@@ -85,7 +85,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoTranscodeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Transcode a video
+
+     Re-encode into another container or codec, change the frame rate, or produce an animated GIF.
+
     Args:
         body (VideoTranscodeRequest): Universal re-encode. `output_format` in
             BaseVideoOutputRequest drives
@@ -117,7 +120,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoTranscodeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Transcode a video
+
+     Re-encode into another container or codec, change the frame rate, or produce an animated GIF.
+
     Args:
         body (VideoTranscodeRequest): Universal re-encode. `output_format` in
             BaseVideoOutputRequest drives
@@ -144,7 +150,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoTranscodeRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Transcode a video
+
+     Re-encode into another container or codec, change the frame rate, or produce an animated GIF.
+
     Args:
         body (VideoTranscodeRequest): Universal re-encode. `output_format` in
             BaseVideoOutputRequest drives
@@ -174,7 +183,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoTranscodeRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """
+    """Transcode a video
+
+     Re-encode into another container or codec, change the frame rate, or produce an animated GIF.
+
     Args:
         body (VideoTranscodeRequest): Universal re-encode. `output_format` in
             BaseVideoOutputRequest drives

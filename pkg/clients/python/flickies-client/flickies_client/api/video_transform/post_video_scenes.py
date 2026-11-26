@@ -97,8 +97,10 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoScenesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed
-    clips.
+    """Detect scene cuts
+
+     Write a JSON manifest of detected scenes. Request preview frames or trimmed clips to package the
+    manifest and artifacts together in a ZIP.
 
     Args:
         body (VideoScenesRequest): Detect scene cuts and write a JSON manifest or a ZIP with the
@@ -128,8 +130,10 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: VideoScenesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed
-    clips.
+    """Detect scene cuts
+
+     Write a JSON manifest of detected scenes. Request preview frames or trimmed clips to package the
+    manifest and artifacts together in a ZIP.
 
     Args:
         body (VideoScenesRequest): Detect scene cuts and write a JSON manifest or a ZIP with the
@@ -154,8 +158,10 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: VideoScenesRequest,
 ) -> Response[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed
-    clips.
+    """Detect scene cuts
+
+     Write a JSON manifest of detected scenes. Request preview frames or trimmed clips to package the
+    manifest and artifacts together in a ZIP.
 
     Args:
         body (VideoScenesRequest): Detect scene cuts and write a JSON manifest or a ZIP with the
@@ -183,8 +189,10 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: VideoScenesRequest,
 ) -> Optional[Union[ErrorBody, JobAcceptedResponse, Union["StagedOutputResponse", "UrlOutputResponse"]]]:
-    """Detect scene cuts and write a JSON manifest or a ZIP with the manifest and preview frames or trimmed
-    clips.
+    """Detect scene cuts
+
+     Write a JSON manifest of detected scenes. Request preview frames or trimmed clips to package the
+    manifest and artifacts together in a ZIP.
 
     Args:
         body (VideoScenesRequest): Detect scene cuts and write a JSON manifest or a ZIP with the
