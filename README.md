@@ -5,7 +5,7 @@
 [![license](https://raw.githubusercontent.com/psyb0t/docker-flickies/badges/license.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/flickies?style=flat-square)](https://hub.docker.com/r/psyb0t/flickies)
 
-**Video toolkit. One port. Zero cloud. Lipsync, face restore, ffmpeg. Fire-and-forget async jobs. Webhooks. Spec-first OpenAPI; Go + Python clients generated from the same spec.**
+Cut the dead air, stitch clips together, burn in subtitles, or make a face lip-sync to your audio. Flickies puts FFmpeg, lipsync models, and face restoration behind one video API. Upload the clip, tell it what needs fixing, and get the damn video back.
 
 The video sibling of [audiolla](https://github.com/psyb0t/docker-audiolla) (audio) and [talkies](https://github.com/psyb0t/docker-talkies) (speech). Same wire format, same async-job model, same bind-mount-`/data` story, same Makefile shape, same `:latest` + `:latest-cuda` split, same opt-in non-commercial gate.
 
